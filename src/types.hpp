@@ -25,6 +25,7 @@ enum class Command
   help,
   version,
   evaluate,
+  network,
   search,
   bootstrap,
   all,

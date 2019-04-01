@@ -1534,6 +1534,24 @@ void command_support(RaxmlInstance& instance)
   check_bootstop(instance, bs_trees, true);
 }
 
+void command_network(RaxmlInstance& instance)
+{
+  const auto& opts = instance.opts;
+
+  LOG_INFO << "Reading reference network from file: " << opts.tree_file << endl;
+
+  if (!sysutil_file_exists(opts.tree_file))
+      throw runtime_error("File not found: " + opts.tree_file);
+
+  Tree ref_network;
+  NewickStream refs(opts.tree_file, std::ios::in);
+  refs >> ref_network;
+
+  LOG_INFO << "Reference tree size: " << to_string(ref_network.num_tips()) << endl << endl;
+
+  // TODO Sarah: Add code here.
+}
+
 void command_rfdist(RaxmlInstance& instance)
 {
   const auto& opts = instance.opts;
@@ -1687,7 +1705,7 @@ void print_final_output(const RaxmlInstance& instance, const Checkpoint& checkp)
   const auto& parted_msa = *instance.parted_msa;
 
   if (opts.command == Command::search || opts.command == Command::all ||
-      opts.command == Command::evaluate)
+      opts.command == Command::evaluate || opts.command == Command::network)
   {
     auto model_log_lvl = parted_msa.part_count() > 1 ? LogLevel::verbose : LogLevel::info;
     auto ckp_models = checkp.best_models.empty() ? checkp.models : checkp.best_models;
@@ -1754,6 +1772,10 @@ void print_final_output(const RaxmlInstance& instance, const Checkpoint& checkp)
 
       LOG_INFO << "All ML trees saved to: " << sysutil_realpath(opts.ml_trees_file()) << endl;
     }
+  }
+
+  if (opts.command == Command::network) {
+	  // TODO Sarah: Add code here.
   }
 
   if (opts.command == Command::all || opts.command == Command::support)
@@ -2260,6 +2282,7 @@ int internal_main(int argc, char** argv, void* comm)
       return clean_exit(EXIT_SUCCESS);
       break;
     case Command::evaluate:
+    case Command::network:
     case Command::search:
     case Command::bootstrap:
     case Command::all:
@@ -2378,6 +2401,9 @@ int internal_main(int argc, char** argv, void* comm)
       case Command::support:
         command_support(instance);
         break;
+      case Command::network:
+    	command_network(instance);
+    	break;
       case Command::bsconverge:
         command_bootstop(instance);
         break;
