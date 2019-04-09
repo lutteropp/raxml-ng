@@ -15,6 +15,7 @@ if (USE_LIBPLL_CMAKE)
             ${PLLMOD_SRC}/msa/pll_msa.h
             ${PLLMOD_SRC}/optimize/pll_optimize.h
             ${PLLMOD_SRC}/tree/pll_tree.h
+            ${PLLMOD_SRC}/network/pll_network.h
             ${PLLMOD_SRC}/util/pllmod_util.h
             ${LIBPLL_SRC}/pll.h
             DESTINATION ${RAXML_LOCALDEPS_DIR}/include/libpll)
