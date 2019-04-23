@@ -1543,11 +1543,11 @@ void command_network(RaxmlInstance& instance)
   if (!sysutil_file_exists(opts.tree_file))
       throw runtime_error("File not found: " + opts.tree_file);
 
-  Tree ref_network;
+  Network ref_network;
   NewickStream refs(opts.tree_file, std::ios::in);
   refs >> ref_network;
 
-  LOG_INFO << "Reference tree size: " << to_string(ref_network.num_tips()) << endl << endl;
+  LOG_INFO << "Reference network size: " << to_string(ref_network.num_tips()) << endl << endl;
 
   // TODO Sarah: Add code here.
 }

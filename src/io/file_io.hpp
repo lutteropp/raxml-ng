@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "../Tree.hpp"
+#include "../Network.hpp"
 #include "../bootstrap/BootstrapTree.hpp"
 #include "../bootstrap/BootstrapGenerator.hpp"
 #include "../PartitionedMSAView.hpp"
@@ -13,6 +14,20 @@ class NewickStream : public std::fstream
 public:
   NewickStream(std::string fname) : std::fstream(fname, std::ios::out), _brlens(true) {};
   NewickStream(std::string fname, std::ios_base::openmode mode) :
+    std::fstream(fname, mode), _brlens(true) {};
+
+  bool brlens() const { return _brlens; }
+  void brlens(bool v) { _brlens = v; }
+
+private:
+  bool _brlens;
+};
+
+class NetworkNewickStream : public std::fstream
+{
+public:
+  NetworkNewickStream(std::string fname) : std::fstream(fname, std::ios::out), _brlens(true) {};
+  NetworkNewickStream(std::string fname, std::ios_base::openmode mode) :
     std::fstream(fname, mode), _brlens(true) {};
 
   bool brlens() const { return _brlens; }
@@ -103,6 +118,14 @@ NewickStream& operator>>(NewickStream& stream, Tree& tree);
 
 NewickStream& operator<<(NewickStream& stream, const SupportTree& tree);
 //NewickStream& operator>>(NewickStream& stream, BootstrapTree& tree);
+
+NetworkNewickStream& operator<<(NetworkNewickStream& stream, const pll_rnetwork_node_t& root);
+NetworkNewickStream& operator<<(NetworkNewickStream& stream, const pll_rnetwork_t& network);
+NetworkNewickStream& operator<<(NetworkNewickStream& stream, const Network& network);
+NetworkNewickStream& operator>>(NetworkNewickStream& stream, Network& network);
+
+//NetworkNewickStream& operator<<(NetworkNewickStream& stream, const SupportNetwork& network);
+//NetworkNewickStream& operator>>(NetworkNewickStream& stream, BootstrapNetwork& network);
 
 PhylipStream& operator>>(PhylipStream& stream, MSA& msa);
 FastaStream& operator>>(FastaStream& stream, MSA& msa);
