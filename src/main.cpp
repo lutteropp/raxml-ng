@@ -32,6 +32,7 @@
 #include "PartitionInfo.hpp"
 #include "PartitionedMSAView.hpp"
 #include "TreeInfo.hpp"
+#include "NetworkInfo.hpp"
 #include "io/file_io.hpp"
 #include "io/binary_io.hpp"
 #include "ParallelContext.hpp"
@@ -89,6 +90,45 @@ struct RaxmlInstance
   unique_ptr<RFDistCalculator> dist_calculator;
 };
 
+struct RaxmlNetworkInstance
+{
+  Options opts;
+  shared_ptr<PartitionedMSA> parted_msa;
+  unique_ptr<PartitionedMSA> parted_msa_parsimony;
+  NetworkList start_networks;
+  BootstrapReplicateList bs_reps;
+  NetworkList bs_start_networks;
+  PartitionAssignmentList proc_part_assign;
+  unique_ptr<LoadBalancer> load_balancer;
+  map<BranchSupportMetric, shared_ptr<SupportNetwork> > support_networks;
+  shared_ptr<ConsensusNetwork> consens_network;
+
+  // bootstopping convergence test, only autoMRE is supported for now
+  unique_ptr<BootstopCheckMRE> bootstop_checker;
+
+  // mapping taxon name -> tip_id/clv_id in the network
+  NameIdMap tip_id_map;
+
+  // mapping tip_id in the network (array index) -> sequence index in MSA
+  IDVector tip_msa_idmap;
+
+ // unique_ptr<TerraceWrapper> terrace_wrapper;
+
+//  unique_ptr<RandomGenerator> starttree_seed_gen;
+//  unique_ptr<RandomGenerator> bootstrap_seed_gen;
+
+  unique_ptr<NetworkNewickStream> start_network_stream;
+
+  /* this is just a dummy random network used for convenience, e,g, if we need tip labels or
+   * just 'any' valid network for the alignment at hand */
+  Network random_network;
+
+  /* topological constraint */
+  Network constraint_network;
+
+  unique_ptr<RFDistCalculator> dist_calculator;
+};
+
 void print_banner()
 {
   LOG_INFO << endl << "RAxML-NG v. " << RAXML_VERSION << " released on " << RAXML_DATE <<
@@ -102,6 +142,103 @@ void print_banner()
 }
 
 void init_part_info(RaxmlInstance& instance)
+{
+  auto& opts = instance.opts;
+
+  instance.parted_msa = std::make_shared<PartitionedMSA>();
+  auto& parted_msa = *instance.parted_msa;
+
+  if (!sysutil_file_exists(opts.msa_file))
+  {
+    throw runtime_error("Alignment file not found: " + opts.msa_file);
+  }
+
+  /* check if we have a binary input file */
+  if (opts.msa_format == FileFormat::binary ||
+      (opts.msa_format == FileFormat::autodetect && RBAStream::rba_file(opts.msa_file)))
+  {
+    if (!opts.model_file.empty())
+    {
+      LOG_WARN <<
+          "WARNING: The model you specified on the command line (" << opts.model_file <<
+                    ") will be ignored " << endl <<
+          "         since the binary MSA file already contains a model definition." << endl <<
+          "         If you want to change the model, please re-run RAxML-NG "  << endl <<
+          "         with the original PHYLIP/FASTA alignment and --redo option."
+          << endl << endl;
+    }
+
+    LOG_INFO_TS << "Loading binary alignment from file: " << opts.msa_file << endl;
+
+    RBAStream bs(opts.msa_file);
+    bs >> parted_msa;
+
+    // binary probMSAs are not supported yet
+    instance.opts.use_prob_msa = false;
+
+    LOG_INFO_TS << "Alignment comprises " << parted_msa.taxon_count() << " taxa, " <<
+        parted_msa.part_count() << " partitions and " <<
+        parted_msa.total_length() << " patterns\n" << endl;
+
+    LOG_INFO << parted_msa;
+
+    LOG_INFO << endl;
+  }
+  /* check if model is a file */
+  else if (sysutil_file_exists(opts.model_file))
+  {
+    // read partition definitions from file
+    try
+    {
+      RaxmlPartitionStream partfile(opts.model_file, ios::in);
+      partfile >> parted_msa;
+    }
+    catch(exception& e)
+    {
+      throw runtime_error("Failed to read partition file:\n" + string(e.what()));
+    }
+  }
+  else if (!opts.model_file.empty())
+  {
+    // create and init single pseudo-partition
+    parted_msa.emplace_part_info("noname", opts.data_type, opts.model_file);
+  }
+  else
+    throw runtime_error("Please specify an evolutionary model with --model switch");
+
+  assert(parted_msa.part_count() > 0);
+
+  /* make sure that linked branch length mode is set for unpartitioned alignments */
+  if (parted_msa.part_count() == 1)
+    opts.brlen_linkage = PLLMOD_COMMON_BRLEN_LINKED;
+
+  /* in the scaled brlen mode, use ML optimization of brlen scalers by default */
+  if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_SCALED)
+  {
+    for (auto& pinfo: parted_msa.part_list())
+      pinfo.model().set_param_mode_default(PLLMOD_OPT_PARAM_BRANCH_LEN_SCALER, ParamValue::ML);
+  }
+
+  int freerate_count = 0;
+
+  for (const auto& pinfo: parted_msa.part_list())
+  {
+    LOG_DEBUG << "|" << pinfo.name() << "|   |" << pinfo.model().to_string() << "|   |" <<
+        pinfo.range_string() << "|" << endl;
+
+    if (pinfo.model().ratehet_mode() == PLLMOD_UTIL_MIXTYPE_FREE)
+      freerate_count++;
+  }
+
+  if (parted_msa.part_count() > 1 && freerate_count > 0 &&
+      opts.brlen_linkage == PLLMOD_COMMON_BRLEN_LINKED)
+  {
+    throw runtime_error("LG4X and FreeRate models are not supported in linked branch length mode.\n"
+        "Please use the '--brlen scaled' option to switch into proportional branch length mode.");
+  }
+}
+
+void init_part_info(RaxmlNetworkInstance& instance)
 {
   auto& opts = instance.opts;
 
@@ -811,6 +948,20 @@ void load_parted_msa(RaxmlInstance& instance)
   // use MSA sequences IDs as "normalized" tip IDs in all trees
   instance.tip_id_map = instance.parted_msa->taxon_id_map();
 }
+
+void load_parted_msa(RaxmlNetworkInstance& instance)
+{
+  init_part_info(instance);
+
+  assert(instance.parted_msa);
+
+  if (instance.parted_msa->part_info(0).msa().empty())
+    load_msa(instance);
+
+  // use MSA sequences IDs as "normalized" tip IDs in all trees
+  instance.tip_id_map = instance.parted_msa->taxon_id_map();
+}
+
 
 void prepare_tree(const RaxmlInstance& instance, Tree& tree)
 {
@@ -2173,6 +2324,102 @@ void master_main(RaxmlInstance& instance, CheckpointManager& cm)
   ParallelContext::resize_buffer(reduce_buffer_size);
 
   /* init template tree */
+  instance.random_tree = generate_tree(instance, StartingTree::random);
+
+  /* load checkpoint */
+  load_checkpoint(instance, cm);
+
+  /* load/create starting tree if not already loaded from checkpoint */
+  if (cm.checkpoint().ml_trees.size() + instance.start_trees.size() < instance.opts.num_searches)
+  {
+    if (ParallelContext::master_rank() || !instance.opts.constraint_tree_file.empty() ||
+        instance.opts.start_tree_file().empty())
+    {
+      /* only master MPI rank generates starting trees (doesn't work with constrainted search) */
+      build_start_trees(instance, cm.checkpoint().ml_trees.size());
+      ParallelContext::mpi_barrier();
+    }
+    else
+    {
+      /* non-master ranks load starting trees from a file */
+      ParallelContext::mpi_barrier();
+      load_start_trees(instance, cm);
+    }
+  }
+
+  LOG_VERB << endl << "Initial model parameters:" << endl;
+  for (size_t p = 0; p < parted_msa.part_count(); ++p)
+  {
+    LOG_VERB << "   Partition: " << parted_msa.part_info(p).name() << endl <<
+        parted_msa.model(p) << endl;
+  }
+
+  /* run load balancing algorithm */
+  balance_load(instance);
+
+  // TEMP WORKAROUND: here we reset random seed once again to make sure that BS replicates
+  // are not affected by the number of ML search starting trees that has been generated before
+  srand(instance.opts.random_seed);
+
+  /* generate bootstrap replicates */
+  generate_bootstraps(instance, cm.checkpoint());
+
+  if (ParallelContext::master_rank())
+    instance.opts.remove_result_files();
+
+  thread_main(instance, cm);
+
+  if (ParallelContext::master_rank())
+  {
+    if (opts.command == Command::all)
+    {
+      auto& checkp = cm.checkpoint();
+      Tree tree = checkp.tree;
+      tree.topology(checkp.ml_trees.best_topology());
+
+      draw_bootstrap_support(instance, tree, checkp.bs_trees);
+    }
+
+    auto ckp_models = cm.checkpoint().best_models.empty() ?
+                              cm.checkpoint().models : cm.checkpoint().best_models;
+    assert(ckp_models.size() == parted_msa.part_count());
+    for (size_t p = 0; p < parted_msa.part_count(); ++p)
+    {
+      parted_msa.model(p, ckp_models.at(p));
+    }
+  }
+}
+
+void master_network_main(RaxmlNetworkInstance& instance, CheckpointManager& cm)
+{
+  auto const& opts = instance.opts;
+
+  /* if resuming from a checkpoint, use binary MSA (if exists) */
+  if (!instance.opts.redo_mode &&
+      sysutil_file_exists(instance.opts.checkp_file()) &&
+      sysutil_file_exists(instance.opts.binary_msa_file()) &&
+      RBAStream::rba_file(instance.opts.binary_msa_file(), true))
+  {
+    instance.opts.msa_file = instance.opts.binary_msa_file();
+    instance.opts.msa_format = FileFormat::binary;
+  }
+
+  load_parted_msa(instance);
+  assert(instance.parted_msa);
+  auto& parted_msa = *instance.parted_msa;
+
+  load_constraint(instance);
+
+  check_options(instance);
+
+  // we need 2 doubles for each partition AND threads to perform parallel reduction,
+  // so resize the buffer accordingly
+  const size_t reduce_buffer_size = std::max(1024lu, 2 * sizeof(double) *
+                                     parted_msa.part_count() * ParallelContext::num_threads());
+  LOG_DEBUG << "Parallel reduction buffer size: " << reduce_buffer_size/1024 << " KB\n\n";
+  ParallelContext::resize_buffer(reduce_buffer_size);
+
+  /* init template network */
   instance.random_tree = generate_tree(instance, StartingTree::random);
 
   /* load checkpoint */

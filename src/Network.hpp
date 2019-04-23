@@ -4,6 +4,8 @@
 #include "common.h"
 #include "PartitionedMSA.hpp"
 
+static const int MAX_RETICULATIONS = 64;
+
 // seems to be the only way to have custom deleter for unique_ptr
 // without having to specify it every time during object creation
 namespace std
