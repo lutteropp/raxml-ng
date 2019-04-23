@@ -29,10 +29,9 @@ char * newick_print_cb(const pll_rnetwork_node_t * node)
   return newick;
 }
 
-std::string to_newick_string_rooted(const Network& network, double root_brlen)
+std::string to_newick_string(const Network& network)
 {
-  char * newick_str = pll_rnetwork_export_newick_rooted(&network.pll_rnetwork_root(),
-                                                     root_brlen);
+  char * newick_str = pll_rnetwork_export_newick(&network.pll_rnetwork_root(), NULL);
   std::string result = newick_str;
   free(newick_str);
   return result;
@@ -57,7 +56,7 @@ NetworkNewickStream& operator<<(NetworkNewickStream& stream, const pll_rnetwork_
 
 NetworkNewickStream& operator<<(NetworkNewickStream& stream, const pll_rnetwork_t& network)
 {
-  stream << *tree.vroot;
+  stream << *network.root;
   return stream;
 }
 
@@ -82,7 +81,7 @@ NetworkNewickStream& operator>>(NetworkNewickStream& stream, Network& network)
 
     pll_rnetwork_t * rnetwork = pll_rnetwork_parse_newick_string(newick_str.c_str());
 
-    libpll_check_error("ERROR reading tree file");
+    libpll_check_error("ERROR reading network file");
 
     assert(rnetwork);
 

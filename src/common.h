@@ -14,6 +14,7 @@ extern "C" {
 #include <libpll/pll_optimize.h>
 #include <libpll/pll_msa.h>
 #include <libpll/pll_tree.h>
+#include <libpll/pll_network.h>
 #include <libpll/pllmod_util.h>
 #include <libpll/pllmod_algorithm.h>
 }
