@@ -11,8 +11,8 @@ static const int MAX_RETICULATIONS = 64;
 namespace std
 {
   template<>
-  struct default_delete<pll_rnetwork_t> {
-    void operator()(pll_rnetwork_t* ptr) { pll_rnetwork_destroy(ptr, nullptr); }
+  struct default_delete<pll_unetwork_t> {
+    void operator()(pll_unetwork_t* ptr) { pll_unetwork_destroy(ptr, nullptr); }
   };
 }
 
@@ -46,13 +46,13 @@ struct NetworkTopology
   std::vector<doubleVector> brlens;
 };
 
-typedef std::unique_ptr<pll_rnetwork_t> PllRNetworkUniquePtr;
-typedef std::vector<pll_rnetwork_node_t*> PllNetworkNodeVector;
+typedef std::unique_ptr<pll_unetwork_t> PllUNetworkUniquePtr;
+typedef std::vector<pll_unetwork_node_t*> PllNetworkNodeVector;
 
 class BasicNetwork
 {
 public:
-  BasicNetwork(size_t num_tips) : _num_tips(num_tips) {}
+  BasicNetwork(size_t num_tips) : _num_tips(num_tips), _num_reticulations(0) {}
   virtual ~BasicNetwork() {}
 
   bool empty() const { return _num_tips == 0; };
@@ -62,6 +62,7 @@ public:
   virtual size_t num_reticulations() const {return _num_reticulations;}
   virtual size_t num_inner() const { return num_inner_tree() + num_reticulations(); };
   virtual size_t num_nodes() const { return num_tips() + num_inner(); };
+  virtual size_t num_subnodes() const { return num_branches() * 2; };
   virtual size_t num_branches() const { return _num_tips + _num_tips - 3 + num_reticulations(); };
   virtual size_t num_tree_branches() const { return _num_tips + _num_tips - 3; };
   virtual size_t num_splits() const { return num_branches() - _num_tips; };
@@ -74,16 +75,16 @@ protected:
 class Network : public BasicNetwork
 {
 public:
-  Network() : BasicNetwork(0), _pll_rnetwork(nullptr) {}
-  Network(unsigned int tip_count, const pll_rnetwork_node_t& root) :
+  Network() : BasicNetwork(0), _pll_unetwork(nullptr) {}
+  Network(unsigned int tip_count, const pll_unetwork_node_t& root) :
     BasicNetwork(tip_count),
-    _pll_rnetwork(pll_rnetwork_wrapnetwork(pll_rnetwork_graph_clone(&root))) {}
-  Network(const pll_rnetwork_t& pll_rnetwork) :
-    BasicNetwork(pll_rnetwork.tip_count), _pll_rnetwork(pll_rnetwork_clone(&pll_rnetwork)) {}
-  Network(std::unique_ptr<pll_rnetwork_t>&  pll_rnetwork) :
-    BasicNetwork(pll_rnetwork ? pll_rnetwork->tip_count : 0), _pll_rnetwork(pll_rnetwork.release()) {}
-  Network(std::unique_ptr<pll_rnetwork_t>&&  pll_rnetwork) :
-    BasicNetwork(pll_rnetwork ? pll_rnetwork->tip_count : 0), _pll_rnetwork(pll_rnetwork.release()) {}
+    _pll_unetwork(pll_unetwork_wrapnetwork(pll_unetwork_graph_clone(&root), tip_count)) {}
+  Network(const pll_unetwork_t& pll_unetwork) :
+    BasicNetwork(pll_unetwork.tip_count), _pll_unetwork(pll_unetwork_clone(&pll_unetwork)) {}
+  Network(std::unique_ptr<pll_unetwork_t>&  pll_unetwork) :
+    BasicNetwork(pll_unetwork ? pll_unetwork->tip_count : 0), _pll_unetwork(pll_unetwork.release()) {}
+  Network(std::unique_ptr<pll_unetwork_t>&&  pll_unetwork) :
+    BasicNetwork(pll_unetwork ? pll_unetwork->tip_count : 0), _pll_unetwork(pll_unetwork.release()) {}
 
   Network (const Network& other);
   Network& operator=(const Network& other);
@@ -115,12 +116,12 @@ public:
   void add_partition_brlens(doubleVector&& brlens);
 
   // TODO: use move semantics to transfer ownership?
-  const pll_rnetwork_t& pll_rnetwork() const { return *_pll_rnetwork; }
-  pll_rnetwork_t * pll_rnetwork_copy() const;
-  void pll_rnetwork(const pll_rnetwork_t&);
-  void pll_rnetwork(unsigned int tip_count, const pll_rnetwork_node_t& root);
+  const pll_unetwork_t& pll_unetwork() const { return *_pll_unetwork; }
+  pll_unetwork_t * pll_unetwork_copy() const;
+  void pll_unetwork(const pll_unetwork_t&);
+  void pll_unetwork(unsigned int tip_count, const pll_unetwork_node_t& root);
 
-  const pll_rnetwork_node_t& pll_rnetwork_root() const { return *_pll_rnetwork->root; }
+  const pll_unetwork_node_t& pll_unetwork_root() const { return *_pll_unetwork->vroot; }
   bool empty() const { return _num_tips == 0; }
 
   void fix_missing_brlens(double new_brlen = RAXML_BRLEN_DEFAULT);
@@ -141,16 +142,17 @@ public:
   size_t num_tree_branches() const;
 
 protected:
-  PllRNetworkUniquePtr _pll_rnetwork;
+  PllUNetworkUniquePtr _pll_unetwork;
   std::vector<doubleVector> _partition_brlens;
 
-  mutable PllNetworkNodeVector _pll_rnetwork_tips;
-  mutable PllNetworkNodeVector _pll_rnetwork_reticulations;
-  mutable PllNetworkNodeVector _pll_rnetwork_nodes;
+  mutable PllNetworkNodeVector _pll_unetwork_tips;
+  mutable PllNetworkNodeVector _pll_unetwork_reticulations;
+  mutable PllNetworkNodeVector _pll_unetwork_nodes;
 
   PllNetworkNodeVector const& tip_nodes() const;
   PllNetworkNodeVector const& reticulation_nodes() const;
   PllNetworkNodeVector const& nodes() const;
+  PllNetworkNodeVector subnodes() const;
 };
 
 typedef std::vector<Network> NetworkList;

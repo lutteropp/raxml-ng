@@ -26,12 +26,12 @@ public:
   void draw_support(bool support_in_pct = true);
 
 protected:
-  PllSplitSharedPtr extract_splits_from_network(const pll_rnetwork_node_t& root,
-                                             pll_rnetwork_node_t ** node_split_map);
+  PllSplitSharedPtr extract_splits_from_network(const pll_unetwork_node_t& root,
+                                             pll_unetwork_node_t ** node_split_map);
   void add_splits_to_hashtable(const PllSplitSharedPtr splits,
                                const doubleVector& support, bool update_only);
   void add_network(const Network& network);
-  virtual void add_network(const pll_rnetwork_node_t& root) = 0;
+  virtual void add_network(const pll_unetwork_node_t& root) = 0;
 
 
   void normalize_support_in_hashtable();
@@ -41,7 +41,7 @@ protected:
 protected:
   size_t _num_bs_networks;
   bitv_hashtable_t* _pll_splits_hash;
-  std::vector<pll_rnetwork_node_t*> _node_split_map;
+  std::vector<pll_unetwork_node_t*> _node_split_map;
   doubleVector _support;
 };
 

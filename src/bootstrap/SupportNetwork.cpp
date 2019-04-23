@@ -39,13 +39,13 @@ SupportNetwork::~SupportNetwork ()
     pllmod_utree_split_hashtable_destroy(_pll_splits_hash);
 }
 
-PllSplitSharedPtr SupportNetwork::extract_splits_from_network(const pll_rnetwork_node_t& root,
-                                                        pll_rnetwork_node_t ** node_split_map)
+PllSplitSharedPtr SupportNetwork::extract_splits_from_network(const pll_unetwork_node_t& root,
+                                                        pll_unetwork_node_t ** node_split_map)
 {
-  PllSplitSharedPtr splits(pllmod_rnetwork_split_create((pll_rnetwork_node_t*) &root,
+  PllSplitSharedPtr splits(pllmod_unetwork_split_create((pll_unetwork_node_t*) &root,
                                                        _num_tips,
                                                        node_split_map),
-                           pllmod_rnetwork_split_destroy);
+                           pllmod_unetwork_split_destroy);
 
   return splits;
 }
@@ -64,7 +64,7 @@ void SupportNetwork::add_splits_to_hashtable(const PllSplitSharedPtr splits,
 
 void SupportNetwork::add_network(const Network& network)
 {
-  add_network(network.pll_rnetwork_root());
+  add_network(network.pll_unetwork_root());
 }
 
 void SupportNetwork::add_replicate_network(const Network& network)
@@ -128,8 +128,8 @@ void SupportNetwork::draw_support(bool support_in_pct)
 //    printf("node_id %d, split_id %d\n", _node_split_map[i]->node_index, i);
 //  printf("\n\n");
 
-  pll_rnetwork_node_t ** node_map = _node_split_map.empty() ? nullptr : _node_split_map.data();
-  pllmod_rnetwork_draw_support(_pll_rnetwork.get(), _support.data(), node_map,
+  pll_unetwork_node_t ** node_map = _node_split_map.empty() ? nullptr : _node_split_map.data();
+  pllmod_unetwork_draw_support(_pll_unetwork.get(), _support.data(), node_map,
                             support_in_pct ? support_fmt_pct : support_fmt_prop);
 
   LOG_DEBUG_TS << "Done!" << endl << endl;

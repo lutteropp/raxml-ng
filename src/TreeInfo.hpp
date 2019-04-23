@@ -5,23 +5,7 @@
 #include "Tree.hpp"
 #include "Options.hpp"
 #include "loadbalance/PartitionAssignment.hpp"
-
-struct spr_round_params
-{
-  bool thorough;
-  int radius_min;
-  int radius_max;
-  int ntopol_keep;
-  double subtree_cutoff;
-  cutoff_info_t cutoff_info;
-
-  void reset_cutoff_info(double loglh)
-  {
-    cutoff_info.lh_dec_count = 0;
-    cutoff_info.lh_dec_sum = 0.;
-    cutoff_info.lh_cutoff = loglh / -1000.0;
-  }
-};
+#include "SPRRoundParams.hpp"
 
 class TreeInfo
 {

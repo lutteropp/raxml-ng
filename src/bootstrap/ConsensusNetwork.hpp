@@ -18,7 +18,7 @@ public:
   ~ConsensusNetwork ();
 
 protected:
-  virtual void add_network(const pll_rnetwork_node_t& root);
+  virtual void add_network(const pll_unetwork_node_t& root);
   virtual bool compute_support();
 
 private:

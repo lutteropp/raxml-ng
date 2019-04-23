@@ -6,25 +6,25 @@
 using namespace std;
 
 Network::Network(const Network& other) :
-		BasicNetwork(other._num_tips), _pll_rnetwork(other.pll_rnetwork_copy()), _partition_brlens(other._partition_brlens) {
+		BasicNetwork(other._num_tips), _pll_unetwork(other.pll_unetwork_copy()), _partition_brlens(other._partition_brlens) {
 }
 
 Network::Network(Network&& other) :
-		BasicNetwork(other._num_tips), _pll_rnetwork(other._pll_rnetwork.release()) {
+		BasicNetwork(other._num_tips), _pll_unetwork(other._pll_unetwork.release()) {
 	other._num_tips = 0;
-	swap(_pll_rnetwork_tips, other._pll_rnetwork_tips);
-	swap(_pll_rnetwork_reticulations, other._pll_rnetwork_reticulations);
-	swap(_pll_rnetwork_nodes, other._pll_rnetwork_nodes);
+	swap(_pll_unetwork_tips, other._pll_unetwork_tips);
+	swap(_pll_unetwork_reticulations, other._pll_unetwork_reticulations);
+	swap(_pll_unetwork_nodes, other._pll_unetwork_nodes);
 	swap(_partition_brlens, other._partition_brlens);
 }
 
 Network& Network::operator=(const Network& other) {
 	if (this != &other) {
-		_pll_rnetwork.reset(other.pll_rnetwork_copy());
+		_pll_unetwork.reset(other.pll_unetwork_copy());
 		_num_tips = other._num_tips;
-		_pll_rnetwork_tips.clear();
-		_pll_rnetwork_reticulations.clear();
-		_pll_rnetwork_nodes.clear();
+		_pll_unetwork_tips.clear();
+		_pll_unetwork_reticulations.clear();
+		_pll_unetwork_nodes.clear();
 		_partition_brlens = other._partition_brlens;
 	}
 
@@ -34,17 +34,17 @@ Network& Network::operator=(const Network& other) {
 Network& Network::operator=(Network&& other) {
 	if (this != &other) {
 		_num_tips = 0;
-		_pll_rnetwork_tips.clear();
-		_pll_rnetwork_reticulations.clear();
-		_pll_rnetwork_nodes.clear();
-		_pll_rnetwork.release();
+		_pll_unetwork_tips.clear();
+		_pll_unetwork_reticulations.clear();
+		_pll_unetwork_nodes.clear();
+		_pll_unetwork.release();
 		_partition_brlens.clear();
 
 		swap(_num_tips, other._num_tips);
-		swap(_pll_rnetwork, other._pll_rnetwork);
-		swap(_pll_rnetwork_tips, other._pll_rnetwork_tips);
-		swap(_pll_rnetwork_reticulations, other._pll_rnetwork_reticulations);
-		swap(_pll_rnetwork_nodes, other._pll_rnetwork_nodes);
+		swap(_pll_unetwork, other._pll_unetwork);
+		swap(_pll_unetwork_tips, other._pll_unetwork_tips);
+		swap(_pll_unetwork_reticulations, other._pll_unetwork_reticulations);
+		swap(_pll_unetwork_nodes, other._pll_unetwork_nodes);
 		swap(_partition_brlens, other._partition_brlens);
 	}
 
@@ -55,56 +55,56 @@ Network::~Network() {
 }
 
 size_t Network::num_inner_tree() const {
-	return _pll_rnetwork ? _pll_rnetwork->inner_tree_count : BasicNetwork::num_inner_tree();
+	return _pll_unetwork ? _pll_unetwork->inner_tree_count : BasicNetwork::num_inner_tree();
 }
 
 size_t Network::num_inner() const {
-	return _pll_rnetwork ? _pll_rnetwork->inner_tree_count + _pll_rnetwork->reticulation_count : BasicNetwork::num_inner();
+	return _pll_unetwork ? _pll_unetwork->inner_tree_count + _pll_unetwork->reticulation_count : BasicNetwork::num_inner();
 }
 
 size_t Network::num_reticulations() const {
-	return _pll_rnetwork ? _pll_rnetwork->reticulation_count : BasicNetwork::num_reticulations();
+	return _pll_unetwork ? _pll_unetwork->reticulation_count : BasicNetwork::num_reticulations();
 }
 
 size_t Network::num_branches() const {
-	return _pll_rnetwork ? _pll_rnetwork->edge_count : BasicNetwork::num_branches();
+	return _pll_unetwork ? _pll_unetwork->edge_count : BasicNetwork::num_branches();
 }
 
 size_t Network::num_tree_branches() const {
-	return _pll_rnetwork ? _pll_rnetwork->tree_edge_count : BasicNetwork::num_tree_branches();
+	return _pll_unetwork ? _pll_unetwork->tree_edge_count : BasicNetwork::num_tree_branches();
 }
 
 bool Network::binary() const {
-	return _pll_rnetwork ? _pll_rnetwork->binary : BasicNetwork::binary();
+	return _pll_unetwork ? _pll_unetwork->binary : BasicNetwork::binary();
 }
 
-pll_rnetwork_t * Network::pll_rnetwork_copy() const {
-	return _pll_rnetwork ? pll_rnetwork_clone(_pll_rnetwork.get()) : nullptr;
+pll_unetwork_t * Network::pll_unetwork_copy() const {
+	return _pll_unetwork ? pll_unetwork_clone(_pll_unetwork.get()) : nullptr;
 }
 
-void Network::pll_rnetwork(const pll_rnetwork_t& network) {
+void Network::pll_unetwork(const pll_unetwork_t& network) {
 	_num_tips = network.tip_count;
-	_pll_rnetwork.reset(pll_rnetwork_clone(&network));
-	_pll_rnetwork_tips.clear();
-	_pll_rnetwork_reticulations.clear();
-	_pll_rnetwork_nodes.clear();
+	_pll_unetwork.reset(pll_unetwork_clone(&network));
+	_pll_unetwork_tips.clear();
+	_pll_unetwork_reticulations.clear();
+	_pll_unetwork_nodes.clear();
 }
 
-void Network::pll_rnetwork(unsigned int tip_count, const pll_rnetwork_node_t& root) {
+void Network::pll_unetwork(unsigned int tip_count, const pll_unetwork_node_t& root) {
 	_num_tips = tip_count;
-	_pll_rnetwork.reset(pll_rnetwork_wrapnetwork(pll_rnetwork_graph_clone(&root)));
-	_pll_rnetwork_tips.clear();
-	_pll_rnetwork_reticulations.clear();
-	_pll_rnetwork_nodes.clear();
+	_pll_unetwork.reset(pll_unetwork_wrapnetwork(pll_unetwork_graph_clone(&root), tip_count));
+	_pll_unetwork_tips.clear();
+	_pll_unetwork_reticulations.clear();
+	_pll_unetwork_nodes.clear();
 }
 
 Network Network::buildRandom(size_t num_tips, const char * const * tip_labels, unsigned int random_seed) {
-	PllRNetworkUniquePtr pll_rnetwork(pllmod_rnetwork_create_random(num_tips, tip_labels, random_seed));
+	PllUNetworkUniquePtr pll_unetwork(pllmod_unetwork_create_random(num_tips, tip_labels, random_seed));
 
 	libpll_check_error("ERROR building random network");
-	assert(pll_rnetwork);
+	assert(pll_unetwork);
 
-	return Network(pll_rnetwork);
+	return Network(pll_unetwork);
 }
 
 Network Network::buildRandom(const NameList& taxon_names, unsigned int random_seed) {
@@ -116,14 +116,14 @@ Network Network::buildRandom(const NameList& taxon_names, unsigned int random_se
 }
 
 Network Network::buildRandomConstrained(const NameList& taxon_names, unsigned int random_seed, const Network& constrained_network) {
-	PllRNetworkUniquePtr pll_rnetwork(pllmod_rnetwork_resolve_multi(&constrained_network.pll_rnetwork(), random_seed, nullptr));
+	PllUNetworkUniquePtr pll_unetwork(pllmod_unetwork_resolve_multi(&constrained_network.pll_unetwork(), random_seed, nullptr));
 
-	if (!pll_rnetwork) {
+	if (!pll_unetwork) {
 		assert (pll_errno);
 		libpll_check_error("ERROR in building a randomized constrained network");
 	}
 
-	Network network(pll_rnetwork);
+	Network network(pll_unetwork);
 
 	if (taxon_names.size() > network.num_tips()) {
 		// constraint network is not comprehensive -> add free taxa
@@ -185,17 +185,17 @@ Network Network::buildParsimony(const PartitionedMSA& parted_msa, unsigned int r
 	}
 	assert(i == pars_partitions.size());
 
-	PllRNetworkUniquePtr pll_rnetwork(
-			pllmod_rnetwork_create_parsimony_multipart(taxon_count, (char* const *) tip_labels.data(), pars_partitions.size(),
+	PllUNetworkUniquePtr pll_unetwork(
+			pllmod_unetwork_create_parsimony_multipart(taxon_count, (char* const *) tip_labels.data(), pars_partitions.size(),
 					pars_partitions.data(), random_seed, pscore));
 
 	for (auto p : pars_partitions)
 		pll_partition_destroy(p);
 
 	libpll_check_error("ERROR building parsimony network");
-	assert(pll_rnetwork);
+	assert(pll_unetwork);
 
-	return Network(pll_rnetwork);
+	return Network(pll_unetwork);
 }
 
 Network Network::loadFromFile(const std::string& file_name) {
@@ -208,34 +208,34 @@ Network Network::loadFromFile(const std::string& file_name) {
 }
 
 PllNetworkNodeVector const& Network::tip_nodes() const {
-	if (_pll_rnetwork_tips.empty() && _num_tips > 0) {
-		assert(_num_tips == _pll_rnetwork->tip_count);
+	if (_pll_unetwork_tips.empty() && _num_tips > 0) {
+		assert(_num_tips == _pll_unetwork->tip_count);
 
-		_pll_rnetwork_tips.assign(_pll_rnetwork->nodes, _pll_rnetwork->nodes + _pll_rnetwork->tip_count);
+		_pll_unetwork_tips.assign(_pll_unetwork->nodes, _pll_unetwork->nodes + _pll_unetwork->tip_count);
 	}
 
-	return _pll_rnetwork_tips;
+	return _pll_unetwork_tips;
 }
 
 PllNetworkNodeVector const& Network::nodes() const {
-	if (_pll_rnetwork_nodes.empty() && _num_tips > 0) {
-		assert(_num_tips == _pll_rnetwork->tip_count);
+	if (_pll_unetwork_nodes.empty() && _num_tips > 0) {
+		assert(_num_tips == _pll_unetwork->tip_count);
 
-		_pll_rnetwork_nodes.assign(_pll_rnetwork->nodes,
-				_pll_rnetwork->nodes + _pll_rnetwork->tip_count + _pll_rnetwork->inner_tree_count + _pll_rnetwork->reticulation_count);
+		_pll_unetwork_nodes.assign(_pll_unetwork->nodes,
+				_pll_unetwork->nodes + _pll_unetwork->tip_count + _pll_unetwork->inner_tree_count + _pll_unetwork->reticulation_count);
 	}
 
-	return _pll_rnetwork_tips;
+	return _pll_unetwork_tips;
 }
 
 PllNetworkNodeVector const& Network::reticulation_nodes() const {
-	if (_pll_rnetwork_reticulations.empty() && _num_reticulations > 0) {
-		assert(_num_reticulations == _pll_rnetwork->reticulation_count);
+	if (_pll_unetwork_reticulations.empty() && _num_reticulations > 0) {
+		assert(_num_reticulations == _pll_unetwork->reticulation_count);
 
 		// TODO: _pll_rnetwork_reticulations.assign(...);
 	}
 
-	return _pll_rnetwork_reticulations;
+	return _pll_unetwork_reticulations;
 }
 
 std::vector<const char*> Network::tip_labels_cstr() const {
@@ -283,17 +283,17 @@ NameIdMap Network::tip_ids() const {
 }
 
 void Network::insert_tips_random(const NameList& tip_names, unsigned int random_seed) {
-	_pll_rnetwork_tips.clear();
+	_pll_unetwork_tips.clear();
 
 	std::vector<const char*> tip_labels(tip_names.size(), nullptr);
 	for (size_t i = 0; i < tip_names.size(); ++i)
 		tip_labels[i] = tip_names[i].data();
 
-	int retval = pllmod_rnetwork_extend_random(_pll_rnetwork.get(), tip_labels.size(), (const char * const *) tip_labels.data(),
+	int retval = pllmod_unetwork_extend_random(_pll_unetwork.get(), tip_labels.size(), (const char * const *) tip_labels.data(),
 			random_seed);
 
 	if (retval)
-		_num_tips = _pll_rnetwork->tip_count;
+		_num_tips = _pll_unetwork->tip_count;
 	else {
 		assert (pll_errno);
 		libpll_check_error("ERROR in randomized network extension");
@@ -306,71 +306,40 @@ void Network::reset_tip_ids(const NameIdMap& label_id_map) {
 
 	for (auto& node : tip_nodes()) {
 		const unsigned int tip_id = label_id_map.at(node->label);
-		node->clv_index = node->idx = tip_id;
+		node->clv_index = node->node_index = tip_id;
 	}
 }
 
 void Network::fix_missing_brlens(double new_brlen) {
-	pllmod_rnetwork_set_length_recursive(_pll_rnetwork.get(), new_brlen, 1);
+	pllmod_unetwork_set_length_recursive(_pll_unetwork.get(), new_brlen, 1);
 }
 
 void Network::reset_brlens(double new_brlen) {
-	pllmod_rnetwork_set_length_recursive(_pll_rnetwork.get(), new_brlen, 0);
+	pllmod_unetwork_set_length_recursive(_pll_unetwork.get(), new_brlen, 0);
 }
 
 NetworkTopology Network::topology() const {
 	NetworkTopology topol;
 
-	topol.edges.resize(num_branches());
+	  topol.edges.resize(num_branches());
 
-	size_t branches = 0;
-	for (auto n : nodes()) {
-		double prob = 1.0;
-		if (n->is_reticulation) {
-			if (n->child) {
-				if (n->child->is_reticulation) {
-					if (n->child->first_parent == n) {
-						prob = n->child->prob;
-					} else {
-						prob = 1.0 - n->child->prob;
-					}
-				}
-				topol.edges.at(n->pmatrix_index) = NetworkBranch(n->idx, n->child->idx, n->length, prob);
-				branches++;
-			}
-		} else {
-			if (n->left) {
-				if (n->left->is_reticulation) {
-					if (n->left->first_parent == n) {
-						prob = n->left->prob;
-					} else {
-						prob = 1.0 - n->left->prob;
-					}
-				}
-				topol.edges.at(n->pmatrix_index) = NetworkBranch(n->idx, n->left->idx, n->length, prob);
-				branches++;
-			}
-			if (n->right) {
-				if (n->right->is_reticulation) {
-					if (n->right->first_parent == n) {
-						prob = n->right->prob;
-					} else {
-						prob = 1.0 - n->right->prob;
-					}
-				}
-				topol.edges.at(n->pmatrix_index) = NetworkBranch(n->idx, n->right->idx, n->length, prob);
-				branches++;
-			}
-		}
-	}
-	topol.brlens = _partition_brlens;
+	  size_t branches = 0;
+	  for (auto n: subnodes())
+	  {
+	    if (n->node_index < n->back->node_index && n->active)
+	    {
+	      topol.edges.at(n->pmatrix_index) = NetworkBranch(n->node_index, n->back->node_index, n->length, n->prob);
+	      branches++;
+	    }
+	  }
+	  topol.brlens = _partition_brlens;
 
-//  for (auto& branch: topol.edges)
-//    printf("%u %u %lf\n", branch.left_node_id, branch.right_node_id, branch.length);
+	//  for (auto& branch: topol.edges)
+	//    printf("%u %u %lf\n", branch.left_node_id, branch.right_node_id, branch.length);
 
-	assert(branches == num_branches());
+	  assert(branches == num_branches());
 
-	return topol;
+	  return topol;
 }
 
 void Network::topology(const NetworkTopology& topol) {
@@ -380,9 +349,9 @@ void Network::topology(const NetworkTopology& topol) {
 	auto allnodes = nodes();
 	unsigned int pmatrix_index = 0;
 	for (const auto& branch : topol) {
-		pll_rnetwork_node_t * left_node = allnodes.at(branch.left_node_id);
-		pll_rnetwork_node_t * right_node = allnodes.at(branch.right_node_id);
-		pllmod_rnetwork_connect_nodes(left_node, right_node, branch.length, branch.prob);
+		pll_unetwork_node_t * left_node = allnodes.at(branch.left_node_id);
+		pll_unetwork_node_t * right_node = allnodes.at(branch.right_node_id);
+		pllmod_unetwork_connect_nodes(left_node, right_node, branch.length, branch.prob);
 
 		// important: make sure all branches have distinct pmatrix indices!
 		left_node->pmatrix_index = right_node->pmatrix_index = pmatrix_index;
@@ -439,11 +408,35 @@ void Network::apply_avg_brlens(const doubleVector& partition_contributions) {
 	}
 }
 
+PllNetworkNodeVector Network::subnodes() const
+{
+	PllNetworkNodeVector subnodes;
+
+  if (_num_tips > 0)
+  {
+    subnodes.resize(num_subnodes());
+
+    for (size_t i = 0; i < _pll_unetwork->tip_count + _pll_unetwork->inner_tree_count + _pll_unetwork->reticulation_count; ++i)
+    {
+      auto start = _pll_unetwork->nodes[i];
+      auto node = start;
+      do
+      {
+        subnodes[node->node_index] = node;
+        node = node->next;
+      }
+      while (node && node != start);
+    }
+  }
+
+  return subnodes;
+}
+
 void Network::reroot(const NameList& outgroup_taxa, bool add_root_node) {
 	// collect tip node indices
 	NameIdMap name_id_map;
 	for (auto const& node : tip_nodes())
-		name_id_map.emplace(string(node->label), node->idx);
+		name_id_map.emplace(string(node->label), node->node_index);
 
 	// find tip ids for outgroup taxa
 	uintVector tip_ids;
@@ -453,7 +446,7 @@ void Network::reroot(const NameList& outgroup_taxa, bool add_root_node) {
 	}
 
 	// re-root network with the outgroup
-	int res = pllmod_rnetwork_outgroup_root(_pll_rnetwork.get(), tip_ids.data(), tip_ids.size(), add_root_node);
+	int res = pllmod_unetwork_outgroup_root(_pll_unetwork.get(), tip_ids.data(), tip_ids.size(), add_root_node);
 
 	if (!res)
 		libpll_check_error("Unable to reroot network");

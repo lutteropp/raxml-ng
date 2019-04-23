@@ -31,7 +31,7 @@ void NetworkInfo::init(const Options &opts, const Network& network, const Partit
   _partition_contributions.resize(parted_msa.part_count());
   double total_weight = 0;
 
-  _pll_networkinfo = pllmod_networkinfo_create(pll_rnetwork_graph_clone(&network.pll_rnetwork_root()),
+  _pll_networkinfo = pllmod_networkinfo_create(pll_unetwork_graph_clone(&network.pll_unetwork_root()),
                                          network.num_tips(),
                                          parted_msa.part_count(), opts.brlen_linkage);
 
@@ -116,7 +116,7 @@ NetworkInfo::~NetworkInfo ()
         pll_partition_destroy(_pll_networkinfo->partitions[i]);
     }
 
-    pll_rnetwork_graph_destroy(_pll_networkinfo->root, NULL);
+    pll_unetwork_graph_destroy(_pll_networkinfo->root, NULL);
     pllmod_networkinfo_destroy(_pll_networkinfo);
   }
 }
@@ -154,20 +154,20 @@ Network NetworkInfo::network(size_t partition_id) const
   if (partition_id >= _pll_networkinfo->partition_count)
     throw out_of_range("Partition ID out of range");
 
-  PllRNetworkUniquePtr pll_rnetwork(pllmod_networkinfo_get_partition_network(_pll_networkinfo, partition_id));
+  PllUNetworkUniquePtr pll_unetwork(pllmod_networkinfo_get_partition_network(_pll_networkinfo, partition_id));
 
-  if (!pll_rnetwork)
+  if (!pll_unetwork)
   {
     assert(pll_errno);
     libpll_check_error("networkinfo: cannot get partition network");
   }
 
-  return Network(pll_rnetwork);
+  return Network(pll_unetwork);
 }
 
 void NetworkInfo::network(const Network& network)
 {
-	_pll_networkinfo->root = pll_rnetwork_graph_clone(&network.pll_rnetwork_root());
+	_pll_networkinfo->root = pll_unetwork_graph_clone(&network.pll_unetwork_root());
 }
 
 double NetworkInfo::loglh(bool incremental)
@@ -366,7 +366,7 @@ double NetworkInfo::optimize_params(int params_to_optimize, double lh_epsilon)
 
 double NetworkInfo::spr_round(spr_round_params& params)
 {
-  double loglh = pllmod_algo_spr_round(_pll_networkinfo, params.radius_min, params.radius_max,
+  double loglh = pllmod_algo_spr_round_networkinfo(_pll_networkinfo, params.radius_min, params.radius_max,
                                params.ntopol_keep, params.thorough, _brlen_opt_method,
                                _brlen_min, _brlen_max, RAXML_BRLEN_SMOOTHINGS,
                                0.1,
@@ -384,7 +384,7 @@ void NetworkInfo::set_topology_constraint(const Network& cons_network)
 {
   if (!cons_network.empty())
   {
-    int retval = pllmod_networkinfo_set_constraint_network(_pll_networkinfo, &cons_network.pll_rnetwork());
+    int retval = pllmod_networkinfo_set_constraint_network(_pll_networkinfo, &cons_network.pll_unetwork());
     if (!retval)
       libpll_check_error("ERROR: Cannot set topological constraint");
   }
@@ -410,7 +410,7 @@ void assign(PartitionedMSA& parted_msa, const NetworkInfo& networkinfo)
 
 void assign(Model& model, const NetworkInfo& networkinfo, size_t partition_id)
 {
-  const pllmod_treeinfo_t& pll_networkinfo = networkinfo.pll_networkinfo();
+  const pllmod_networkinfo_t& pll_networkinfo = networkinfo.pll_networkinfo();
 
   if (partition_id >= pll_networkinfo.partition_count)
     throw out_of_range("Partition ID out of range");
