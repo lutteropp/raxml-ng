@@ -9,7 +9,7 @@
 
 using namespace std;
 
-char * support_fmt_pct(double support)
+char * support_fmt_pct_network(double support)
 {
   char *str;
   int size_alloced = asprintf(&str, "%u", (unsigned int) round(support * 100.));
@@ -17,7 +17,7 @@ char * support_fmt_pct(double support)
   return size_alloced >= 0 ? str : NULL;
 }
 
-char * support_fmt_prop(double support)
+char * support_fmt_prop_network(double support)
 {
   const unsigned int precision = logger().precision(LogElement::brlen);
 
@@ -45,7 +45,7 @@ PllSplitSharedPtr SupportNetwork::extract_splits_from_network(const pll_unetwork
   PllSplitSharedPtr splits(pllmod_unetwork_split_create((pll_unetwork_node_t*) &root,
                                                        _num_tips,
                                                        node_split_map),
-                           pllmod_unetwork_split_destroy);
+                           pllmod_utree_split_destroy);
 
   return splits;
 }
@@ -130,7 +130,7 @@ void SupportNetwork::draw_support(bool support_in_pct)
 
   pll_unetwork_node_t ** node_map = _node_split_map.empty() ? nullptr : _node_split_map.data();
   pllmod_unetwork_draw_support(_pll_unetwork.get(), _support.data(), node_map,
-                            support_in_pct ? support_fmt_pct : support_fmt_prop);
+                            support_in_pct ? support_fmt_pct_network : support_fmt_prop_network);
 
   LOG_DEBUG_TS << "Done!" << endl << endl;
 }

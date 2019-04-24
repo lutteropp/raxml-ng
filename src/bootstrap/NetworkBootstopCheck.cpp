@@ -24,7 +24,7 @@ void NetworkBootstopCheck::add_bootstrap_network(const Network& network)
   }
 
   if (!_pll_splits_hash)
-    _pll_splits_hash = pllmod_unetwork_split_hashtable_create(network.num_tips(), 0);
+    _pll_splits_hash = pllmod_utree_split_hashtable_create(network.num_tips(), 0);
 
   if (!_pll_splits_hash)
   {
@@ -40,7 +40,7 @@ void NetworkBootstopCheck::add_bootstrap_network(const Network& network)
 
   for (size_t i = 0; i < network.num_splits(); ++i)
   {
-    bitv_hash_entry_t * e = pllmod_unetwork_split_hashtable_insert_single(_pll_splits_hash,
+    bitv_hash_entry_t * e = pllmod_utree_split_hashtable_insert_single(_pll_splits_hash,
                                                                        splits[i],
                                                                        1.0);
     if (!e)
@@ -225,7 +225,7 @@ void NetworkBootstopCheckMRE::mre(splitEntryVector& splits_all, const uintVector
     {
       for (auto ce = splits_cons.rbegin(); ce != splits_cons.rend(); ce++)
       {
-        if (!pllmod_unetwork_compatible_splits((*ce)->bit_vector, e->bit_vector,
+        if (!pllmod_utree_compatible_splits((*ce)->bit_vector, e->bit_vector,
                                             split_len, tip_count))
         {
           compatible = false;

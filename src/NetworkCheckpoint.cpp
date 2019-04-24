@@ -234,7 +234,7 @@ BasicBinaryStream& operator>>(BasicBinaryStream& stream, NetworkCheckpoint& ckp)
   return stream;
 }
 
-void assign_tree(NetworkCheckpoint& ckp, const NetworkInfo& networkinfo)
+void assign_network(NetworkCheckpoint& ckp, const NetworkInfo& networkinfo)
 {
   ckp.network = networkinfo.network();
 }

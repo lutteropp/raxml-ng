@@ -27,7 +27,7 @@ ConsensusNetwork::~ConsensusNetwork ()
 
 void ConsensusNetwork::add_network(const pll_unetwork_node_t& root)
 {
-  pll_unode_t ** node_split_map = nullptr;
+  pll_unetwork_node_t ** node_split_map = nullptr;
   doubleVector support;
   int update_only = 0;
 
@@ -44,7 +44,7 @@ bool ConsensusNetwork::compute_support()
   normalize_support_in_hashtable();
 
   /* build final split system */
-  pll_split_system_t * split_system = pllmod_unetwork_split_consensus(_pll_splits_hash,
+  pll_split_system_t * split_system = pllmod_utree_split_consensus(_pll_splits_hash,
                                                                    _num_tips,
                                                                    _cutoff);
 
@@ -55,7 +55,7 @@ bool ConsensusNetwork::compute_support()
 
   LOG_DEBUG_TS << "Building consensus tree topology..." << endl;
 
-  /* build tree from splits */
+  /* build network from splits */
   pll_consensus_unetwork_t * cons_network = pllmod_unetwork_from_splits(split_system,
                                                                _num_tips,
                                                                (char * const *) tip_labels_cstr().data());
@@ -80,7 +80,7 @@ bool ConsensusNetwork::compute_support()
     _support[i] = ((pll_consensus_data_t *) node->data)->support;
   }
 
-  pllmod_unetwork_split_system_destroy(split_system);
+  pllmod_utree_split_system_destroy(split_system);
   pllmod_unetwork_consensus_destroy(cons_network);
 
   return true;

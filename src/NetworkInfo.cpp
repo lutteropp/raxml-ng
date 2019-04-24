@@ -424,7 +424,7 @@ void assign(Model& model, const NetworkInfo& networkinfo, size_t partition_id)
     model.brlen_scaler(pll_networkinfo.brlen_scalers[partition_id]);
 }
 
-void build_clv(ProbVector::const_iterator probs, size_t sites, WeightVector::const_iterator weights,
+void build_clv_network(ProbVector::const_iterator probs, size_t sites, WeightVector::const_iterator weights,
                pll_partition_t* partition, bool normalize, std::vector<double>& clv)
 {
   const auto states = partition->states;
@@ -456,7 +456,7 @@ void build_clv(ProbVector::const_iterator probs, size_t sites, WeightVector::con
   assert(clvp == clv.end());
 }
 
-void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip_msa_idmap,
+void set_partition_tips_network(const Options& opts, const MSA& msa, const IDVector& tip_msa_idmap,
                         const PartitionRange& part_region,
                         pll_partition_t* partition, const pll_state_t * charmap)
 {
@@ -479,7 +479,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
     {
       auto seq_id = tip_msa_idmap.empty() ? tip_id : tip_msa_idmap[tip_id];
       auto prob_start = msa.probs(seq_id, part_region.start);
-      build_clv(prob_start, partition->sites, weights_start, partition, normalize, tmp_clv);
+      build_clv_network(prob_start, partition->sites, weights_start, partition, normalize, tmp_clv);
       pll_set_tip_clv(partition, tip_id, tmp_clv.data(), PLL_FALSE);
     }
   }
@@ -493,7 +493,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
   }
 }
 
-void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip_msa_idmap,
+void set_partition_tips_network(const Options& opts, const MSA& msa, const IDVector& tip_msa_idmap,
                         const PartitionRange& part_region,
                         pll_partition_t* partition, const pll_state_t * charmap,
                         const WeightVector& weights)
@@ -527,7 +527,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
     {
       auto seq_id = tip_msa_idmap.empty() ? tip_id : tip_msa_idmap[tip_id];
       auto prob_start = msa.probs(seq_id, part_region.start);
-      build_clv(prob_start, part_region.length, weights_start, partition, normalize, tmp_clv);
+      build_clv_network(prob_start, part_region.length, weights_start, partition, normalize, tmp_clv);
       pll_set_tip_clv(partition, tip_id, tmp_clv.data(), PLL_FALSE);
     }
   }
@@ -624,9 +624,9 @@ pll_partition_t* create_pll_partition_network(const Options& opts, const Partiti
     pll_set_asc_state_weights(partition, model.ascbias_weights().data());
 
   if (part_length == part_region.length)
-    set_partition_tips(opts, msa, tip_msa_idmap, part_region, partition, model.charmap());
+    set_partition_tips_network(opts, msa, tip_msa_idmap, part_region, partition, model.charmap());
   else
-    set_partition_tips(opts, msa, tip_msa_idmap, part_region, partition, model.charmap(), weights);
+    set_partition_tips_network(opts, msa, tip_msa_idmap, part_region, partition, model.charmap(), weights);
 
   assign(partition, model);
 

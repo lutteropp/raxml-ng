@@ -11,7 +11,7 @@ TransferBootstrapNetwork::TransferBootstrapNetwork(const Network& network, bool 
 
   if (!_naive_method)
   {
-    _split_info = pllmod_unetwork_tbe_nature_init((pll_unetwork_node_t*) &pll_unetwork_root(), _num_tips,
+    _split_info = pllmod_unetwork_tbe_nature_init((pll_unetwork_t*) &pll_unetwork(), _num_tips,
                                               (const pll_unetwork_node_t**) _node_split_map.data());
   }
 }
@@ -41,10 +41,10 @@ void TransferBootstrapNetwork::add_network(const pll_unetwork_node_t& root)
 
     // compute TBE
     if (_naive_method)
-      pllmod_unetwork_tbe_naive(_ref_splits.get(), splits.get(), _num_tips, support.data());
+      pllmod_utree_tbe_naive(_ref_splits.get(), splits.get(), _num_tips, support.data());
     else
     {
-      pllmod_unetwork_tbe_nature(_ref_splits.get(), splits.get(), (pll_unode_t*) &root,
+      pllmod_unetwork_tbe_nature(_ref_splits.get(), splits.get(), (pll_unetwork_node_t*) &root,
                                                _num_tips, support.data(), _split_info);
     }
 
