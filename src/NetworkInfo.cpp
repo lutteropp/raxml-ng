@@ -172,7 +172,7 @@ void NetworkInfo::network(const Network& network)
 
 double NetworkInfo::loglh(bool incremental)
 {
-  return pllmod_networkinfo_compute_loglh(_pll_networkinfo, incremental ? 1 : 0);
+  return pllmod_networkinfo_compute_loglh(_pll_networkinfo, incremental ? 1 : 0, 1);
 }
 
 void NetworkInfo::model(size_t partition_id, const Model& model)
@@ -366,7 +366,7 @@ double NetworkInfo::optimize_params(int params_to_optimize, double lh_epsilon)
 
 double NetworkInfo::spr_round(spr_round_params& params)
 {
-  double loglh = pllmod_algo_spr_round_networkinfo(_pll_networkinfo, params.radius_min, params.radius_max,
+  double loglh = pllmod_algo_spr_round_network(_pll_networkinfo, params.radius_min, params.radius_max,
                                params.ntopol_keep, params.thorough, _brlen_opt_method,
                                _brlen_min, _brlen_max, RAXML_BRLEN_SMOOTHINGS,
                                0.1,
