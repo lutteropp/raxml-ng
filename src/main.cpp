@@ -3415,12 +3415,12 @@ void thread_main_network(RaxmlNetworkInstance& instance, NetworkCheckpointManage
     if (opts.command == Command::evaluate)
     {
       LOG_INFO << "\nEvaluating " << opts.num_searches <<
-          " trees" << endl;
+          " networks" << endl;
     }
     else
     {
-      LOG_INFO << "\nStarting ML tree search with " << opts.num_searches <<
-          " distinct starting trees" << endl;
+      LOG_INFO << "\nStarting ML network search with " << opts.num_searches <<
+          " distinct starting networks" << endl;
     }
 
     (instance.start_networks.size() > 1 ? LOG_RESULT : LOG_INFO) << endl;
@@ -3482,7 +3482,7 @@ void thread_main_network(RaxmlNetworkInstance& instance, NetworkCheckpointManage
         LOG_PROGR << endl;
       }
 
-      cm.save_ml_tree();
+      cm.save_ml_network();
       cm.reset_search_state();
     }
   }
@@ -3494,7 +3494,7 @@ void thread_main_network(RaxmlNetworkInstance& instance, NetworkCheckpointManage
     if (opts.command == Command::all)
     {
       LOG_INFO << endl;
-      LOG_INFO_TS << "ML tree search completed, best tree logLH: " <<
+      LOG_INFO_TS << "ML network search completed, best network logLH: " <<
           FMT_LH(cm.checkpoint().ml_networks.best_score()) << endl << endl;
     }
 
@@ -3502,7 +3502,7 @@ void thread_main_network(RaxmlNetworkInstance& instance, NetworkCheckpointManage
              << " replicates." << endl << endl;
   }
 
-  /* infer bootstrap trees if needed */
+  /* infer bootstrap networks if needed */
   size_t bs_num = cm.checkpoint().bs_networks.size();
   auto bs_start_network = instance.bs_start_networks.cbegin();
   use_ckp_network = use_ckp_network && cm.checkpoint().search_state.step != CheckpointStep::start;
@@ -3523,7 +3523,7 @@ void thread_main_network(RaxmlNetworkInstance& instance, NetworkCheckpointManage
     if (use_ckp_network)
     {
       // restore search state from checkpoint (tree + model params)
-    	networkinfo.reset(new NetworkInfo(opts, cm.checkpoint().network, master_msa, instance.tip_msa_idmap,
+      networkinfo.reset(new NetworkInfo(opts, cm.checkpoint().network, master_msa, instance.tip_msa_idmap,
                                   bs_part_assign, bs.site_weights));
       assign_models(*networkinfo, cm.checkpoint());
       use_ckp_network = false;
@@ -3550,11 +3550,11 @@ void thread_main_network(RaxmlNetworkInstance& instance, NetworkCheckpointManage
     optimizer.optimize_topology(*networkinfo, cm);
 
     LOG_PROGR << endl;
-    LOG_INFO_TS << "Bootstrap tree #" << bs_num <<
+    LOG_INFO_TS << "Bootstrap network #" << bs_num <<
                 ", logLikelihood: " << FMT_LH(cm.checkpoint().loglh()) << endl;
     LOG_PROGR << endl;
 
-    cm.save_bs_tree();
+    cm.save_bs_network();
     cm.reset_search_state();
     ++bs_start_network;
 

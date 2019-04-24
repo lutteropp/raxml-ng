@@ -91,7 +91,7 @@ void NetworkCheckpointManager::reset_search_state()
   ParallelContext::thread_barrier();
 };
 
-void NetworkCheckpointManager::save_ml_tree()
+void NetworkCheckpointManager::save_ml_network()
 {
   if (ParallelContext::master_thread())
   {
@@ -101,7 +101,7 @@ void NetworkCheckpointManager::save_ml_tree()
   }
 }
 
-void NetworkCheckpointManager::save_bs_tree()
+void NetworkCheckpointManager::save_bs_network()
 {
   if (ParallelContext::master_thread())
   {

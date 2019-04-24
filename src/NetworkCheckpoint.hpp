@@ -37,7 +37,7 @@ struct NetworkCheckpoint
 class NetworkCheckpointManager
 {
 public:
-	NetworkCheckpointManager(const std::string& ckp_fname) : _active(true), _ckp_fname(ckp_fname) {}
+  NetworkCheckpointManager(const std::string& ckp_fname) : _active(true), _ckp_fname(ckp_fname) {}
 
   const NetworkCheckpoint& checkpoint() { return _checkp; }
   void checkpoint(NetworkCheckpoint&& ckp) { _checkp = std::move(ckp); }
@@ -51,8 +51,8 @@ public:
 
   void update_and_write(const NetworkInfo& networkinfo);
 
-  void save_ml_tree();
-  void save_bs_tree();
+  void save_ml_network();
+  void save_bs_network();
 
   bool read() { return read(_ckp_fname); }
   bool read(const std::string& ckp_fname);
