@@ -2,6 +2,7 @@
 #define RAXML_TOPOLOGY_RFDISTCALCULATOR_HPP_
 
 #include "../Tree.hpp"
+#include "../Network.hpp"
 
 typedef std::vector<bool> bitVector;
 
@@ -9,6 +10,7 @@ class RFDistCalculator
 {
 public:
   RFDistCalculator (const TreeList& trees, bool lowmem = false);
+  RFDistCalculator (const NetworkList& networks, bool lowmem = false);
   virtual
   ~RFDistCalculator ();
 
@@ -33,9 +35,13 @@ private:
   size_t _num_uniq_trees;
 
   void calc_rfdist(const TreeList& trees);
+  void calc_rfdist(const NetworkList& networks);
   void calc_rfdist_lowmem(const TreeList& trees);
+  void calc_rfdist_lowmem(const NetworkList& networks);
   void add_tree_splits(size_t tree_idx, const Tree& tree,
                        bitv_hashtable_t * splits_hash);
+  void add_network_splits(size_t tree_idx, const Network& network,
+                         bitv_hashtable_t * splits_hash);
   double maxrf() const;
 };
 

@@ -79,6 +79,12 @@ TerraceWrapper::TerraceWrapper (const PartitionedMSA& parted_msa, const Tree& tr
   _supertree = create_supertree_data(terra_tree, _bm);
 }
 
+TerraceWrapper::TerraceWrapper (const PartitionedMSA& parted_msa, const Network& network) :
+    _bm(parted_msa.taxon_count(), parted_msa.part_count())
+{
+  throw std::runtime_error("This function is not supported by networks yet!");
+}
+
 std::uint64_t TerraceWrapper::terrace_size()
 {
   return count_terrace(_supertree);

@@ -4,6 +4,7 @@
 #include <terraces/advanced.hpp>
 #include <terraces/parser.hpp>
 #include <terraces/errors.hpp>
+#include "../Network.hpp"
 
 class PartitionedMSA;
 class Tree;
@@ -12,6 +13,7 @@ class TerraceWrapper
 {
 public:
   TerraceWrapper (const PartitionedMSA& part_msa, const Tree& tree);
+  TerraceWrapper (const PartitionedMSA& part_msa, const Network& network);
 
   std::uint64_t terrace_size();
   void print_terrace_newick(std::ostream& output);

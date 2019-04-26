@@ -2658,6 +2658,71 @@ bool check_bootstop(const RaxmlInstance& instance, const TreeCollection& bs_tree
   return converged;
 }
 
+bool check_bootstop(const RaxmlNetworkInstance& instance, const NetworkCollection& bs_networks,
+                    bool print = false)
+{
+  if (!instance.bootstop_checker)
+    return false;
+
+  const auto& opts       = instance.opts;
+  auto& bootstop_checker = instance.bootstop_checker;
+
+  if (!bootstop_checker->max_bs_networks())
+    bootstop_checker->max_bs_networks(bs_networks.size());
+
+  if (print)
+  {
+    LOG_INFO << "Performing bootstrap convergence assessment using autoMRE criterion"
+             << endl << endl;
+
+    // # Trees     Avg WRF in %    # Perms: wrf <= 2.00 %
+    LOG_INFO << " # trees       "
+             << " avg WRF      "
+             << " avg WRF in %      "
+             << " # perms: wrf <= " << setprecision(2) << opts.bootstop_cutoff * 100 << " %    "
+             << " converged?  " << endl;
+  }
+
+  assert(!instance.random_network.empty());
+
+  Network bs_network = instance.random_network;
+  size_t bs_num = 0;
+  bool converged = false;
+  for (auto it: bs_networks)
+  {
+    bs_network.topology(it.second);
+
+    bootstop_checker->add_bootstrap_network(bs_network);
+
+    bs_num++;
+
+    if (bs_num % opts.bootstop_interval == 0 || bs_num == bs_networks.size())
+    {
+      converged = bootstop_checker->converged(rand());
+
+      if (print)
+      {
+        LOG_INFO << setw(8) << bs_num << " "
+                 << setw(14) << setprecision(3) << bootstop_checker->avg_wrf() << "   "
+                 << setw(16) << setprecision(3) << bootstop_checker->avg_pct() << "   "
+                 << setw(26) << bootstop_checker->num_better() << "        "
+                 << (converged ? "YES" : "NO") << endl;
+      }
+
+      if (converged)
+        break;
+    }
+  }
+
+  if (print)
+  {
+    LOG_INFO << "Bootstopping test " << (converged ? "converged" : "did not converge")
+             << " after " <<  bootstop_checker->num_bs_networks() << " networks" << endl << endl;
+  }
+
+  return converged;
+}
+
 TreeCollection read_newick_trees(Tree& ref_tree,
                                  const std::string& fname, const std::string& tree_kind)
 {
@@ -2720,6 +2785,68 @@ TreeCollection read_newick_trees(Tree& ref_tree,
   return bs_trees;
 }
 
+NetworkCollection read_newick_networks(Network& ref_network,
+                                 const std::string& fname, const std::string& network_kind)
+{
+  NameIdMap ref_tip_ids;
+  NetworkCollection bs_networks;
+  unsigned int bs_num = 0;
+
+  if (!sysutil_file_exists(fname))
+    throw runtime_error("File not found: " + fname);
+
+  NetworkNewickStream boots(fname, std::ios::in);
+  auto network_kind_cap = network_kind;
+  network_kind_cap[0] = toupper(network_kind_cap[0]);
+
+  LOG_INFO << "Reading " << network_kind << " trees from file: " << fname << endl;
+
+  while (boots.peek() != EOF)
+  {
+    Network network;
+    boots >> network;
+
+    if (bs_networks.empty())
+    {
+      if (ref_network.empty())
+    	  ref_network = network;
+      ref_tip_ids = ref_network.tip_ids();
+    }
+
+    assert(!ref_tip_ids.empty());
+
+    if (!network.binary())
+    {
+      LOG_DEBUG << "REF #branches: " << ref_network.num_branches()
+                << ", BS #branches: " << network.num_branches() << endl;
+      throw runtime_error(network_kind_cap + " network #" + to_string(bs_num+1) +
+                          " contains multifurcations!");
+    }
+
+    try
+    {
+    	network.reset_tip_ids(ref_tip_ids);
+    }
+    catch (out_of_range& e)
+    {
+      throw runtime_error(network_kind_cap + " network #" + to_string(bs_num+1) +
+                          " contains incompatible taxon name(s)!");
+    }
+    catch (invalid_argument& e)
+    {
+      throw runtime_error(network_kind_cap + " network #" + to_string(bs_num+1) +
+                          " has wrong number of tips: " + to_string(network.num_tips()));
+    }
+    bs_networks.push_back(0, network);
+    bs_num++;
+  }
+
+  LOG_INFO << "Loaded " << bs_networks.size() << " networks with "
+           << ref_network.num_tips() << " taxa." << endl << endl;
+
+  return bs_networks;
+}
+
 TreeCollection read_bootstrap_trees(const RaxmlInstance& instance, Tree& ref_tree)
 {
   auto bs_trees = read_newick_trees(ref_tree, instance.opts.bootstrap_trees_file(), "bootstrap");
@@ -2730,6 +2857,18 @@ TreeCollection read_bootstrap_trees(const RaxmlInstance& instance, Tree& ref_tre
   }
 
   return bs_trees;
+}
+
+NetworkCollection read_bootstrap_networks(const RaxmlNetworkInstance& instance, Network& ref_network)
+{
+  auto bs_networks = read_newick_networks(ref_network, instance.opts.bootstrap_trees_file(), "bootstrap");
+
+  if (bs_networks.size() < 2)
+  {
+    throw runtime_error("You must provide a file with multiple bootstrap networks!");
+  }
+
+  return bs_networks;
 }
 
 void read_multiple_tree_files(RaxmlInstance& instance)
@@ -2754,11 +2893,41 @@ void read_multiple_tree_files(RaxmlInstance& instance)
   }
 }
 
+void read_multiple_network_files(RaxmlNetworkInstance& instance)
+{
+  const auto& opts = instance.opts;
+
+  vector<string> fname_list;
+  if (sysutil_file_exists(opts.tree_file))
+    fname_list.push_back(opts.tree_file);
+  else
+    fname_list = split_string(opts.tree_file, ',');
+
+  for (const auto& fname: fname_list)
+  {
+    auto topos = read_newick_networks(instance.random_network, fname, "input");
+    Network ref_network = instance.random_network;
+    for (const auto& t: topos)
+    {
+    	ref_network.topology(t.second);
+      instance.start_networks.emplace_back(ref_network);
+    }
+  }
+}
+
+
 void command_bootstop(RaxmlInstance& instance)
 {
   auto bs_trees = read_bootstrap_trees(instance, instance.random_tree);
 
   check_bootstop(instance, bs_trees, true);
+}
+
+void command_bootstop(RaxmlNetworkInstance& instance)
+{
+  auto bs_networks = read_bootstrap_networks(instance, instance.random_network);
+
+  check_bootstop(instance, bs_networks, true);
 }
 
 void command_support(RaxmlInstance& instance)
@@ -2781,6 +2950,46 @@ void command_support(RaxmlInstance& instance)
 
   draw_bootstrap_support(instance, ref_tree, bs_trees);
   check_bootstop(instance, bs_trees, true);
+}
+
+void command_support(RaxmlNetworkInstance& instance)
+{
+  const auto& opts = instance.opts;
+
+  LOG_INFO << "Reading reference network from file: " << opts.tree_file << endl;
+
+  if (!sysutil_file_exists(opts.tree_file))
+    throw runtime_error("File not found: " + opts.tree_file);
+
+  Network ref_network;
+  NetworkNewickStream refs(opts.tree_file, std::ios::in);
+  refs >> ref_network;
+
+  LOG_INFO << "Reference network size: " << to_string(ref_network.num_tips()) << endl << endl;
+
+  /* read all bootstrap networks from a Newick file */
+  auto bs_networks = read_bootstrap_networks(instance, ref_network);
+
+  draw_bootstrap_support(instance, ref_network, bs_networks);
+  check_bootstop(instance, bs_networks, true);
+}
+
+void command_network(RaxmlNetworkInstance& instance)
+{
+  const auto& opts = instance.opts;
+
+  LOG_INFO << "Reading reference network from file: " << opts.tree_file << endl;
+
+  if (!sysutil_file_exists(opts.tree_file))
+      throw runtime_error("File not found: " + opts.tree_file);
+
+  Network ref_network;
+  NetworkNewickStream refs(opts.tree_file, std::ios::in);
+  refs >> ref_network;
+
+  LOG_INFO << "Reference network size: " << to_string(ref_network.num_tips()) << endl << endl;
+
+  // TODO Sarah: Add code here.
 }
 
 void command_network(RaxmlInstance& instance)
@@ -2825,6 +3034,30 @@ void command_rfdist(RaxmlInstance& instance)
   instance.dist_calculator.reset(new RFDistCalculator(instance.start_trees));
 }
 
+void command_rfdist(RaxmlNetworkInstance& instance)
+{
+  const auto& opts = instance.opts;
+
+  if (opts.start_trees.count(StartingTree::random) +
+      opts.start_trees.count(StartingTree::parsimony) > 0)
+  {
+    /* generate random/parsimony trees -> we need an MSA for this */
+    assert(!opts.msa_file.empty());
+    load_parted_msa(instance);
+    build_start_networks(instance, 0);
+  }
+  else
+  {
+    /* load trees from Newick file(s) */
+    read_multiple_network_files(instance);
+  }
+
+  if (instance.start_networks.size() < 2)
+    throw runtime_error("Cannot compute RF distances since tree file contains fewer than 2 networks!");
+
+  instance.dist_calculator.reset(new RFDistCalculator(instance.start_networks));
+}
+
 void command_consense(RaxmlInstance& instance)
 {
   const auto& opts = instance.opts;
@@ -2842,7 +3075,30 @@ void command_consense(RaxmlInstance& instance)
     runtime_error("Cannot create consensus tree!");
 }
 
+void command_consense(RaxmlNetworkInstance& instance)
+{
+  const auto& opts = instance.opts;
+
+  /* load networks from Newick file(s) */
+  read_multiple_network_files(instance);
+
+  if (instance.start_networks.size() < 2)
+    throw runtime_error("Cannot consensus network since network file contains fewer than 2 networks!");
+
+  instance.consens_network.reset(new ConsensusNetwork(instance.start_networks, opts.consense_cutoff));
+  if (instance.consens_network)
+    instance.consens_network->draw_support();
+  else
+    runtime_error("Cannot create consensus network!");
+}
+
 void command_bsmsa(RaxmlInstance& instance, const Checkpoint& checkp)
+{
+  load_parted_msa(instance);
+  generate_bootstraps(instance, checkp);
+}
+
+void command_bsmsa(RaxmlNetworkInstance& instance, const NetworkCheckpoint& checkp)
 {
   load_parted_msa(instance);
   generate_bootstraps(instance, checkp);
@@ -2912,6 +3168,70 @@ void check_terrace(const RaxmlInstance& instance, const Tree& tree)
 #endif
 }
 
+void check_terrace(const RaxmlNetworkInstance& instance, const Network& network)
+{
+#ifdef _RAXML_TERRAPHAST
+  const auto& parted_msa = *instance.parted_msa;
+
+  if (parted_msa.part_count() > 1 && instance.opts.brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED)
+  {
+    try
+    {
+      TerraceWrapper terrace_wrapper(parted_msa, network);
+      auto terrace_size = terrace_wrapper.terrace_size();
+      if (terrace_size > 1)
+      {
+        LOG_WARN << "WARNING: Best-found ML network lies on a terrace of size: "
+                 << terrace_size << endl << endl;
+
+        if (!instance.opts.terrace_file().empty())
+        {
+          ofstream fs(instance.opts.terrace_file());
+          terrace_wrapper.print_terrace_compressed(fs);
+          LOG_INFO << "Network terrace (in compressed Newick format) was saved to: "
+              << sysutil_realpath(instance.opts.terrace_file()) << endl;
+
+          if (terrace_size <= instance.opts.terrace_maxsize)
+          {
+            auto nwk_fname = instance.opts.terrace_file() + "Newick";
+            ofstream fsn(nwk_fname);
+            terrace_wrapper.print_terrace_newick(fsn);
+            LOG_INFO << "Network terrace (in multi-line Newick format) was saved to: "
+                << sysutil_realpath(nwk_fname) << endl;
+          }
+
+          LOG_INFO << endl;
+        }
+      }
+      else
+      {
+        LOG_INFO << "NOTE: Network does not lie on a phylogenetic terrace." << endl << endl;
+      }
+    }
+    catch (terraces::no_usable_root_error& e)
+    {
+      if (instance.opts.command == Command::terrace)
+      {
+        LOG_ERROR << "ERROR: Cannot check for phylogenetic terraces "
+            "since no comprehensive taxon is found." << endl << endl;
+      }
+      else
+      {
+        LOG_VERB << "NOTE: Cannot check for phylogenetic terraces "
+            "since no comprehensive taxon is found." << endl << endl;
+      }
+    }
+    catch (std::runtime_error& e)
+    {
+      LOG_ERROR << "ERROR: Unexpected terraphast error: " << e.what() << endl << endl;
+    }
+  }
+#else
+  RAXML_UNUSED(instance);
+  RAXML_UNUSED(network);
+#endif
+}
+
 void save_ml_trees(const Options& opts, const Checkpoint& checkp)
 {
   NewickStream nw(opts.ml_trees_file(), std::ios::out);
@@ -2921,6 +3241,18 @@ void save_ml_trees(const Options& opts, const Checkpoint& checkp)
     ml_tree.topology(topol.second);
     postprocess_tree(opts, ml_tree);
     nw << ml_tree;
+  }
+}
+
+void save_ml_networks(const Options& opts, const NetworkCheckpoint& checkp)
+{
+  NetworkNewickStream nw(opts.ml_trees_file(), std::ios::out);
+  for (auto topol: checkp.ml_networks)
+  {
+    Network ml_network = checkp.network;
+    ml_network.topology(topol.second);
+    postprocess_network(opts, ml_network);
+    nw << ml_network;
   }
 }
 
@@ -2947,6 +3279,31 @@ void print_ic_scores(const RaxmlInstance& instance, double loglh)
             << endl << endl;
   }
 }
+
+void print_ic_scores(const RaxmlNetworkInstance& instance, double loglh)
+{
+  const auto& parted_msa = *instance.parted_msa;
+
+  size_t free_params = total_free_params(instance);
+  size_t sample_size = parted_msa.total_sites();
+
+  ICScoreCalculator ic_calc(free_params, sample_size);
+  auto ic_scores = ic_calc.all(loglh);
+
+  LOG_INFO << "AIC score: " << ic_scores[InformationCriterion::aic] << " / ";
+  LOG_INFO << "AICc score: " << ic_scores[InformationCriterion::aicc] << " / ";
+  LOG_INFO << "BIC score: " << ic_scores[InformationCriterion::bic] << endl;
+  LOG_INFO << "Free parameters (model + branch lengths): " << free_params << endl << endl;
+
+  if (free_params >= sample_size)
+  {
+    LOG_WARN << "WARNING: Number of free parameters (K=" << free_params << ") "
+             << "is larger than alignment size (n=" << sample_size << ").\n"
+             << "         This might lead to overfitting and compromise tree inference results!\n"
+            << endl << endl;
+  }
+}
+
 
 void print_final_output(const RaxmlInstance& instance, const Checkpoint& checkp)
 {
@@ -3179,7 +3536,259 @@ void print_final_output(const RaxmlInstance& instance, const Checkpoint& checkp)
   LOG_INFO << endl << endl;
 }
 
+void print_final_output(const RaxmlNetworkInstance& instance, const NetworkCheckpoint& checkp)
+{
+  auto const& opts = instance.opts;
+  const auto& parted_msa = *instance.parted_msa;
+
+  if (opts.command == Command::search || opts.command == Command::all ||
+      opts.command == Command::evaluate || opts.command == Command::network)
+  {
+    auto model_log_lvl = parted_msa.part_count() > 1 ? LogLevel::verbose : LogLevel::info;
+    auto ckp_models = checkp.best_models.empty() ? checkp.models : checkp.best_models;
+
+    RAXML_LOG(model_log_lvl) << "Optimized model parameters:" << endl;
+
+    for (size_t p = 0; p < parted_msa.part_count(); ++p)
+    {
+      RAXML_LOG(model_log_lvl) << "\n   Partition " << p << ": " <<
+          parted_msa.part_info(p).name().c_str() << endl;
+      RAXML_LOG(model_log_lvl) << ckp_models.at(p);
+    }
+  }
+
+  if (opts.command == Command::search || opts.command == Command::all ||
+      opts.command == Command::evaluate)
+  {
+    auto best = checkp.ml_networks.best();
+    auto best_loglh = best->first;
+
+    LOG_INFO << endl;
+    LOG_RESULT << "Final LogLikelihood: " << FMT_LH(best_loglh) << endl;
+    LOG_INFO << endl;
+
+    print_ic_scores(instance, best_loglh);
+
+    Network best_network = checkp.network;
+
+    best_network.topology(best->second);
+
+    check_terrace(instance, best_network);
+
+    postprocess_network(opts, best_network);
+
+//    pll_utree_show_ascii(&best_tree.pll_utree_root(),
+//                         PLL_UTREE_SHOW_LABEL | PLL_UTREE_SHOW_BRANCH_LENGTH | PLL_UTREE_SHOW_CLV_INDEX );
+//    printf("\n\n");
+
+    if (!opts.best_tree_file().empty())
+    {
+      NetworkNewickStream nw_result(opts.best_tree_file());
+      nw_result << best_network;
+
+      LOG_INFO << "Best ML network saved to: " << sysutil_realpath(opts.best_tree_file()) << endl;
+    }
+
+    if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED && !opts.partition_trees_file().empty())
+    {
+      NetworkNewickStream nw_result(opts.partition_trees_file());
+
+      for (size_t p = 0; p < parted_msa.part_count(); ++p)
+      {
+        best_network.apply_partition_brlens(p);
+        nw_result << best_network;
+      }
+
+      LOG_INFO << "Best per-partition ML networks saved to: " <<
+          sysutil_realpath(opts.partition_trees_file()) << endl;
+    }
+
+    if (checkp.ml_networks.size() > 1 && !opts.ml_trees_file().empty())
+    {
+      save_ml_networks(opts, checkp);
+
+      LOG_INFO << "All ML networks saved to: " << sysutil_realpath(opts.ml_trees_file()) << endl;
+    }
+  }
+
+  if (opts.command == Command::network) {
+	  // TODO Sarah: Add code here.
+  }
+
+  if (opts.command == Command::all || opts.command == Command::support)
+  {
+    assert(!instance.support_networks.empty());
+
+    for (const auto& it: instance.support_networks)
+    {
+      postprocess_network(instance.opts, *it.second);
+
+      auto sup_file = opts.support_tree_file(it.first);
+      if (!sup_file.empty())
+      {
+        NetworkNewickStream nw(sup_file, std::ios::out);
+        nw << *it.second;
+
+        std::string metric_name = "";
+        if (it.first == BranchSupportMetric::fbp)
+          metric_name = "Felsenstein bootstrap (FBP)";
+        else if (it.first == BranchSupportMetric::tbe)
+          metric_name = "Transfer bootstrap (TBE)";
+
+        LOG_INFO << "Best ML network with " << metric_name << " support values saved to: " <<
+            sysutil_realpath(sup_file) << endl;
+      }
+    }
+  }
+
+  if (opts.command == Command::consense)
+  {
+    assert(instance.consens_network);
+
+    auto cons_file = opts.cons_tree_file();
+    if (!cons_file.empty())
+    {
+      NetworkNewickStream nw(cons_file, std::ios::out);
+      nw.brlens(false);
+      nw << *instance.consens_network;
+
+      LOG_INFO << opts.consense_type_name() << " consensus network saved to: " <<
+          sysutil_realpath(cons_file) << endl;
+    }
+  }
+
+  if (opts.command == Command::search || opts.command == Command::all ||
+      opts.command == Command::evaluate)
+  {
+    if (!opts.best_model_file().empty())
+    {
+      RaxmlPartitionStream model_stream(opts.best_model_file(), true);
+      model_stream.print_model_params(true);
+      model_stream << fixed << setprecision(logger().precision(LogElement::model));
+      model_stream << parted_msa;
+
+      LOG_INFO << "Optimized model saved to: " << sysutil_realpath(opts.best_model_file()) << endl;
+    }
+  }
+
+  if (opts.command == Command::bootstrap || opts.command == Command::all)
+  {
+    // TODO now only master process writes the output, this will have to change with
+    // coarse-grained parallelization scheme (parallel start trees/bootstraps)
+    if (!opts.bootstrap_trees_file().empty())
+    {
+  //    NewickStream nw(opts.bootstrap_trees_file(), std::ios::out | std::ios::app);
+      NetworkNewickStream nw(opts.bootstrap_trees_file(), std::ios::out);
+
+      for (auto topol: checkp.bs_networks)
+      {
+        Network bs_network = checkp.network;
+        bs_network.topology(topol.second);
+        postprocess_network(opts, bs_network);
+        nw << bs_network;
+      }
+
+      LOG_INFO << "Bootstrap networks saved to: " << sysutil_realpath(opts.bootstrap_trees_file()) << endl;
+    }
+  }
+
+  if (opts.command == Command::bsmsa)
+  {
+    if (!opts.bootstrap_msa_file(1).empty())
+    {
+      PartitionedMSAView bs_msa_view(instance.parted_msa);
+
+      bool print_part_file = instance.parted_msa->part_count() > 1;
+
+      size_t bsnum = 0;
+      for (const auto& bsrep: instance.bs_reps)
+      {
+        bsnum++;
+        PhylipStream ps(opts.bootstrap_msa_file(bsnum));
+
+        bs_msa_view.site_weights(bsrep.site_weights);
+        ps << bs_msa_view;
+      }
+
+      LOG_INFO << "Bootstrap replicate MSAs saved to: "
+               << sysutil_realpath(opts.bootstrap_msa_file(1))
+               << "  ... " << endl
+               << "                                   "
+               << sysutil_realpath(opts.bootstrap_msa_file(opts.num_bootstraps)) << endl;
+
+      if (print_part_file)
+      {
+        RaxmlPartitionStream ps(opts.bootstrap_partition_file(), ios::out);
+
+        ps << bs_msa_view;
+
+        LOG_INFO << endl;
+        LOG_INFO << "Partition file for (all) bootstrap replicate MSAs saved to: "
+                 << sysutil_realpath(opts.bootstrap_partition_file()) << endl << endl;
+
+        LOG_INFO << "IMPORTANT: You MUST use the aforementioned adjusted partitioned file" << endl
+                 << "           when running tree searches on bootstrap replicate MSAs!" << endl;
+      }
+    }
+  }
+
+  if (opts.command == Command::rfdist)
+  {
+    assert(instance.dist_calculator);
+
+    const auto& rfcalc = *instance.dist_calculator;
+
+    LOG_RESULT << "Average absolute RF distance in this tree set: " << rfcalc.avg_rf() << endl;
+    LOG_RESULT << "Average relative RF distance in this tree set: " << rfcalc.avg_rrf() << endl;
+    LOG_RESULT << "Number of unique topologies in this tree set: "  << rfcalc.num_uniq_trees() << endl;
+
+    if (!opts.rfdist_file().empty())
+    {
+      fstream fs(opts.rfdist_file(), ios::out);
+      fs << rfcalc;
+
+      LOG_INFO << "\nPairwise RF distances saved to: " << sysutil_realpath(opts.rfdist_file()) << endl;
+    }
+  }
+
+  if (!opts.log_file().empty())
+      LOG_INFO << "\nExecution log saved to: " << sysutil_realpath(opts.log_file()) << endl;
+
+  LOG_INFO << "\nAnalysis started: " << global_timer().start_time();
+  LOG_INFO << " / finished: " << global_timer().current_time() << std::endl;
+  LOG_INFO << "\nElapsed time: " << FMT_PREC3(global_timer().elapsed_seconds()) << " seconds";
+  if (checkp.elapsed_seconds > 0.)
+  {
+    LOG_INFO << " (this run) / ";
+    LOG_INFO << FMT_PREC3(checkp.elapsed_seconds + global_timer().elapsed_seconds()) <<
+        " seconds (total with restarts)";
+  }
+
+  LOG_INFO << endl << endl;
+}
+
 void print_resources(const RaxmlInstance& instance)
+{
+  StaticResourceEstimator resEstimator(*instance.parted_msa, instance.opts);
+  auto res = resEstimator.estimate();
+
+  LOG_VERB << "* Per-taxon CLV size (elements)                : "
+      << res.taxon_clv_size << endl;
+  LOG_INFO << "* Estimated memory requirements                : " <<
+      (size_t) (((float) res.total_mem_size) / (1024 * 1024) + 1) << " MB" << endl << endl;
+  LOG_INFO << "* Recommended number of threads / MPI processes: "
+           << res.num_threads_balanced << endl;
+  LOG_VERB << "* Maximum     number of threads / MPI processes: "
+           << res.num_threads_response << endl;
+  LOG_VERB << "* Minimum     number of threads / MPI processes: "
+           << res.num_threads_throughput << endl;
+
+  LOG_INFO << endl << "Please note that numbers given above are rough estimates only. " << endl <<
+      "Actual memory consumption and parallel performance on your system may differ!"
+      << endl << endl;
+}
+
+void print_resources(const RaxmlNetworkInstance& instance)
 {
   StaticResourceEstimator resEstimator(*instance.parted_msa, instance.opts);
   auto res = resEstimator.estimate();
@@ -3680,7 +4289,7 @@ void master_main(RaxmlInstance& instance, CheckpointManager& cm)
   }
 }
 
-void master_network_main(RaxmlNetworkInstance& instance, NetworkCheckpointManager& cm)
+void master_main(RaxmlNetworkInstance& instance, NetworkCheckpointManager& cm)
 {
   auto const& opts = instance.opts;
 
@@ -4032,19 +4641,271 @@ int internal_main(int argc, char** argv, void* comm)
   return clean_exit(retval);
 }
 
+int internal_main_network(int argc, char** argv, void* comm)
+{
+  int retval = EXIT_SUCCESS;
+
+  RaxmlNetworkInstance instance;
+  auto& opts = instance.opts;
+
+  ParallelContext::init_mpi(argc, argv, comm);
+
+  opts.num_ranks = ParallelContext::num_ranks();
+
+  logger().add_log_stream(&cout);
+
+  CommandLineParser cmdline;
+  try
+  {
+    cmdline.parse_options(argc, argv, opts);
+  }
+  catch (OptionException &e)
+  {
+    LOG_INFO << "ERROR: " << e.message() << std::endl;
+    return clean_exit(EXIT_FAILURE);
+  }
+
+  /* handle trivial commands first */
+  switch (opts.command)
+  {
+    case Command::help:
+      print_banner();
+      cmdline.print_help();
+      return clean_exit(EXIT_SUCCESS);
+      break;
+    case Command::version:
+      print_banner();
+      return clean_exit(EXIT_SUCCESS);
+      break;
+    case Command::evaluate:
+    case Command::network:
+    case Command::search:
+    case Command::bootstrap:
+    case Command::all:
+    case Command::support:
+    case Command::start:
+    case Command::terrace:
+    case Command::bsmsa:
+    case Command::rfdist:
+    case Command::consense:
+      if (!opts.redo_mode && opts.result_files_exist())
+      {
+        LOG_ERROR << endl << "ERROR: Result files for the run with prefix `" <<
+                            (opts.outfile_prefix.empty() ? opts.msa_file : opts.outfile_prefix) <<
+                            "` already exist!\n" <<
+                            "Please either choose a new prefix, remove old files, or add "
+                            "--redo command line switch to overwrite them." << endl << endl;
+        return clean_exit(EXIT_FAILURE);
+      }
+      break;
+    case Command::bsconverge:
+    default:
+      break;
+  }
+
+  /* now get to the real stuff */
+  try
+  {
+    // make sure all MPI ranks use the same random seed
+    ParallelContext::mpi_broadcast(&opts.random_seed, sizeof(long));
+    srand(opts.random_seed);
+
+    logger().log_level(instance.opts.log_level);
+    logger().precision(instance.opts.precision, LogElement::all);
+
+    /* only master process writes the log file */
+    if (ParallelContext::master() && !instance.opts.log_file().empty())
+    {
+      auto mode = !instance.opts.redo_mode && sysutil_file_exists(instance.opts.checkp_file()) ?
+          ios::app : ios::out;
+      logger().set_log_filename(opts.log_file(), mode);
+    }
+
+    print_banner();
+    LOG_INFO << opts;
+
+    if (!opts.constraint_tree_file.empty() &&
+        (opts.start_trees.count(StartingTree::parsimony) > 0 ||
+         opts.start_trees.count(StartingTree::user)))
+    {
+      throw runtime_error(string("") +
+          " User and parsimony starting trees are not supported in combination with "
+          "constrained tree inference.\n" +
+          "       Please use random starting trees instead.");
+    }
+
+    if (opts.redo_mode)
+    {
+      LOG_WARN << "WARNING: Running in REDO mode: existing checkpoints are ignored, "
+          "and all result files will be overwritten!" << endl << endl;
+    }
+
+    if (opts.force_mode)
+    {
+      LOG_WARN << "WARNING: Running in FORCE mode: "
+               << (opts.safety_checks.isnone() ? "all" : "some")
+               << " safety checks are disabled!"
+               << endl << endl;
+    }
+
+    /* init bootstopping */
+    switch (opts.bootstop_criterion)
+    {
+      case BootstopCriterion::autoMRE:
+        instance.bootstop_checker.reset(new NetworkBootstopCheckMRE(opts.num_bootstraps,
+                                                             opts.bootstop_cutoff,
+                                                             opts.bootstop_permutations));
+        break;
+      case BootstopCriterion::none:
+        break;
+      default:
+        throw runtime_error("Only autoMRE bootstopping criterion is supported for now, sorry!");
+    }
+
+    NetworkCheckpointManager cm(opts.checkp_file());
+
+    switch (opts.command)
+    {
+      case Command::evaluate:
+      case Command::search:
+      case Command::bootstrap:
+      case Command::all:
+      {
+        /* init load balancer */
+        switch(opts.load_balance_method)
+        {
+          case LoadBalancing::naive:
+            instance.load_balancer.reset(new SimpleLoadBalancer());
+            break;
+          case LoadBalancing::kassian:
+            instance.load_balancer.reset(new KassianLoadBalancer());
+            break;
+          case LoadBalancing::benoit:
+            instance.load_balancer.reset(new BenoitLoadBalancer());
+            break;
+          default:
+            assert(0);
+        }
+
+        ParallelContext::init_pthreads(opts, std::bind(thread_main_network,
+                                                       std::ref(instance),
+                                                       std::ref(cm)));
+
+        master_main(instance, cm);
+        break;
+      }
+      case Command::support:
+        command_support(instance);
+        break;
+      case Command::network:
+    	command_network(instance);
+    	break;
+      case Command::bsconverge:
+        command_bootstop(instance);
+        break;
+#ifdef _RAXML_TERRAPHAST
+      case Command::terrace:
+      {
+        load_parted_msa(instance);
+        assert(!opts.tree_file.empty());
+        LOG_INFO << "Loading tree from: " << opts.tree_file << endl << endl;
+        if (!sysutil_file_exists(opts.tree_file))
+          throw runtime_error("File not found: " + opts.tree_file);
+        instance.start_network_stream.reset(new NetworkNewickStream(opts.tree_file, std::ios::in));
+        Network network = generate_network(instance, StartingTree::user);
+        check_terrace(instance, network);
+        break;
+      }
+#endif
+      case Command::check:
+        opts.use_pattern_compression = false;
+        /* fall through */
+      case Command::parse:
+      {
+        load_parted_msa(instance);
+        if (!opts.tree_file.empty())
+        {
+          LOG_INFO << "Loading network from: " << opts.tree_file << endl << endl;
+          if (!sysutil_file_exists(opts.tree_file))
+            throw runtime_error("File not found: " + opts.tree_file);
+          instance.start_network_stream.reset(new NetworkNewickStream(opts.tree_file, std::ios::in));
+          Network network = generate_network(instance, StartingTree::user);
+        }
+        if (opts.command == Command::parse)
+          print_resources(instance);
+
+        LOG_INFO << "Alignment can be successfully read by RAxML-NG." << endl << endl;
+        break;
+      }
+      case Command::start:
+      {
+        load_parted_msa(instance);
+        build_start_networks(instance, 0);
+        if (!opts.start_tree_file().empty())
+        {
+          LOG_INFO << "\nAll starting networks saved to: " <<
+              sysutil_realpath(opts.start_tree_file()) << endl << endl;
+        }
+        else
+        {
+          LOG_INFO << "\nStarting networks have been successfully generated." << endl << endl;
+        }
+        break;
+      }
+      case Command::bsmsa:
+      {
+        command_bsmsa(instance, cm.checkpoint());
+        break;
+      }
+      case Command::rfdist:
+      {
+        command_rfdist(instance);
+        break;
+      }
+      case Command::consense:
+      {
+        command_consense(instance);
+        break;
+      }
+      case Command::none:
+      default:
+        LOG_ERROR << "Unknown command!" << endl;
+        retval = EXIT_FAILURE;
+    }
+
+    /* finalize */
+    if (ParallelContext::master_rank())
+    {
+      print_final_output(instance, cm.checkpoint());
+
+      /* analysis finished successfully, remove checkpoint file */
+      cm.remove();
+    }
+  }
+  catch(exception& e)
+  {
+    LOG_ERROR << endl << "ERROR: " << e.what() << endl << endl;
+    retval = EXIT_FAILURE;
+  }
+
+  return clean_exit(retval);
+}
+
 
 #ifdef _RAXML_BUILD_AS_LIB
 
 extern "C" int dll_main(int argc, char** argv, void* comm)
 {
-  return internal_main(argc, argv, comm);
+  //return internal_main(argc, argv, comm);
+  return internal_main_network(argc, argv, comm);
 }
 
 #else
 
 int main(int argc, char** argv)
 {
-  return internal_main(argc, argv, 0);
+  //return internal_main(argc, argv, 0);
+  return internal_main_network(argc, argv, 0);
 }
 
 #endif
