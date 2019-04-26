@@ -1654,7 +1654,7 @@ Network generate_network(const RaxmlNetworkInstance& instance, StartingTree type
       break;
     case StartingTree::parsimony:
     {
-      LOG_DEBUG << "Generating a parsimony starting tree with " << parted_msa.taxon_count()
+      LOG_DEBUG << "Generating a parsimony starting network with " << parted_msa.taxon_count()
                 << " taxa" << endl;
 
       unsigned int score;
@@ -1667,12 +1667,12 @@ Network generate_network(const RaxmlNetworkInstance& instance, StartingTree type
                                     *instance.parted_msa_parsimony.get() : *instance.parted_msa;
       network = Network::buildParsimony(pars_msa, network_rand_seed, attrs, &score);
 
-      LOG_DEBUG << "Parsimony score of the starting tree: " << score << endl;
+      LOG_DEBUG << "Parsimony score of the starting network: " << score << endl;
 
       break;
     }
     default:
-      sysutil_fatal("Unknown starting tree type: %d\n", type);
+      sysutil_fatal("Unknown starting network type: %d\n", type);
   }
 
   assert(!network.empty());
