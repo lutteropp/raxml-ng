@@ -91,7 +91,7 @@ double NetworkOptimizer::optimize_topology(NetworkInfo& networkinfo, NetworkChec
   }
 
   // do SPRs
-  const int radius_limit = min(22, (int) networkinfo.pll_networkinfo().tip_count - 3 );
+  const int radius_limit = min(22, (int) networkinfo.pll_networkinfo().network->tip_count - 3 );
   const int radius_step = 5;
 
 //  treeinfo->counter = 0;

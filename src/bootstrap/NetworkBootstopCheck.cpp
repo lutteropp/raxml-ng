@@ -34,6 +34,7 @@ void NetworkBootstopCheck::add_bootstrap_network(const Network& network)
 
   pll_split_t * splits = pllmod_unetwork_split_create(&network.pll_unetwork_root(),
 		                                           network.num_tips(),
+												   network.num_reticulations(),
                                                    nullptr);
 
   assert(_pll_splits_hash);

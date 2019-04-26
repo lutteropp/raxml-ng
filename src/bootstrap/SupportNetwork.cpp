@@ -44,6 +44,7 @@ PllSplitSharedPtr SupportNetwork::extract_splits_from_network(const pll_unetwork
 {
   PllSplitSharedPtr splits(pllmod_unetwork_split_create((pll_unetwork_node_t*) &root,
                                                        _num_tips,
+													   _num_reticulations,
                                                        node_split_map),
                            pllmod_utree_split_destroy);
 

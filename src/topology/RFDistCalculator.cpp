@@ -79,7 +79,7 @@ void RFDistCalculator::add_network_splits(size_t tree_idx, const Network& networ
   assert(tree_idx < _num_trees);
 
   pll_split_t * splits = pllmod_unetwork_split_create(&network.pll_unetwork_root(),
-		  network.num_tips(),
+		  network.num_tips(), network.num_reticulations(),
                                                  nullptr);
 
   for (size_t i = 0; i < network.num_splits(); ++i)
@@ -306,7 +306,7 @@ void RFDistCalculator::calc_rfdist_lowmem(const NetworkList& networks)
   {
     const auto& network = networks.at(i);
     splits[i] = pllmod_unetwork_split_create(&network.pll_unetwork_root(),
-    		network.num_tips(),
+    		network.num_tips(), network.num_reticulations(),
                                           nullptr);
   }
 
