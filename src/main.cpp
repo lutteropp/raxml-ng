@@ -2185,7 +2185,7 @@ void build_start_networks(RaxmlNetworkInstance& instance, size_t skip_networks)
   auto& opts = instance.opts;
   const auto& parted_msa = *instance.parted_msa;
 
-  /* all start trees were already generated/loaded -> return */
+  /* all start networks were already generated/loaded -> return */
   if (skip_networks + instance.start_networks.size() >= instance.opts.num_searches)
     return;
 
@@ -2196,13 +2196,13 @@ void build_start_networks(RaxmlNetworkInstance& instance, size_t skip_networks)
     switch (st_tree_type)
     {
       case StartingTree::user:
-        LOG_INFO_TS << "Loading user starting tree(s) from: " << opts.tree_file << endl;
+        LOG_INFO_TS << "Loading user starting network(s) from: " << opts.tree_file << endl;
         if (!sysutil_file_exists(opts.tree_file))
           throw runtime_error("File not found: " + opts.tree_file);
         instance.start_network_stream.reset(new NetworkNewickStream(opts.tree_file, std::ios::in));
         break;
       case StartingTree::random:
-        LOG_INFO_TS << "Generating " << st_tree_count << " random starting tree(s) with "
+        LOG_INFO_TS << "Generating " << st_tree_count << " random starting network(s) with "
                     << parted_msa.taxon_count() << " taxa" << endl;
         break;
       case StartingTree::parsimony:
@@ -2211,7 +2211,7 @@ void build_start_networks(RaxmlNetworkInstance& instance, size_t skip_networks)
           LOG_DEBUG_TS << "Generating MSA partitioned by data type for parsimony computation" << endl;
           build_parsimony_msa(instance);
         }
-        LOG_INFO_TS << "Generating " << st_tree_count << " parsimony starting tree(s) with "
+        LOG_INFO_TS << "Generating " << st_tree_count << " parsimony starting network(s) with "
                     << parted_msa.taxon_count() << " taxa" << endl;
         break;
       default:
@@ -2222,7 +2222,7 @@ void build_start_networks(RaxmlNetworkInstance& instance, size_t skip_networks)
     {
       auto network = generate_network(instance, st_tree_type);
 
-      // TODO use universal starting tree generator
+      // TODO use universal starting network generator
       if (st_tree_type == StartingTree::user)
       {
         if (instance.start_network_stream->peek() != EOF)
