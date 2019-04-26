@@ -1640,9 +1640,9 @@ Network generate_network(const RaxmlNetworkInstance& instance, StartingTree type
       break;
     }
     case StartingTree::random:
-      /* no starting tree provided, generate a random one */
+      /* no starting network provided, generate a random one */
 
-      LOG_DEBUG << "Generating a random starting tree with " << parted_msa.taxon_count()
+      LOG_DEBUG << "Generating a random starting network with " << parted_msa.taxon_count()
                 << " taxa" << endl;
 
       if (instance.constraint_network.empty())
