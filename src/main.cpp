@@ -1541,7 +1541,7 @@ void prepare_network(const RaxmlNetworkInstance& instance, Network& network)
   /* fix missing branch lengths */
 	network.fix_missing_brlens();
 
-  /* make sure tip indices are consistent between MSA and pll_tree */
+  /* make sure tip indices are consistent between MSA and pll_network */
   assert(!instance.parted_msa->taxon_id_map().empty());
   network.reset_tip_ids(instance.tip_id_map);
 }
