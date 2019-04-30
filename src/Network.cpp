@@ -326,8 +326,9 @@ NetworkTopology Network::topology() const {
 	  size_t branches = 0;
 	  for (auto n: subnodes())
 	  {
-	    if (n->node_index < n->back->node_index && n->active)
+	    if (n->node_index < n->back->node_index /*&& n->active*/)
 	    {
+	      assert(n->pmatrix_index < topol.edges.size());
 	      topol.edges.at(n->pmatrix_index) = NetworkBranch(n->node_index, n->back->node_index, n->length, n->prob);
 	      branches++;
 	    }

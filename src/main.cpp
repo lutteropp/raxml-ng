@@ -1195,7 +1195,7 @@ void check_network(const PartitionedMSA& msa, const Network& network)
   for (const auto& branch: network.topology())
   {
     if (branch.length < 0.)
-      throw runtime_error("Tree file contains negative branch lengths!");
+      throw runtime_error("Network file contains negative branch lengths!");
   }
 }
 
