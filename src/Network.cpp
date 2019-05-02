@@ -217,7 +217,7 @@ PllNetworkNodeVector const& Network::nodes() const {
 				_pll_unetwork->nodes + _pll_unetwork->tip_count + _pll_unetwork->inner_tree_count + _pll_unetwork->reticulation_count);
 	}
 
-	return _pll_unetwork_tips;
+	return _pll_unetwork_nodes;
 }
 
 PllNetworkNodeVector const& Network::reticulation_nodes() const {
