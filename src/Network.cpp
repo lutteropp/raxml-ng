@@ -299,6 +299,7 @@ void Network::reset_tip_ids(const NameIdMap& label_id_map) {
 	for (auto& node : tip_nodes()) {
 		const unsigned int tip_id = label_id_map.at(node->label);
 		node->clv_index = node->node_index = tip_id;
+		node->pmatrix_index = node->back->pmatrix_index = tip_id;
 	}
 }
 
