@@ -90,14 +90,6 @@ void Network::pll_unetwork(const pll_unetwork_t& network) {
 	_pll_unetwork_nodes.clear();
 }
 
-void Network::pll_unetwork(unsigned int tip_count, const pll_unetwork_node_t& root) {
-	_num_tips = tip_count;
-	_pll_unetwork.reset(pll_unetwork_wrapnetwork(pll_unetwork_graph_clone(&root), tip_count));
-	_pll_unetwork_tips.clear();
-	_pll_unetwork_reticulations.clear();
-	_pll_unetwork_nodes.clear();
-}
-
 Network Network::buildRandom(size_t num_tips, const char * const * tip_labels, unsigned int random_seed) {
 	PllUNetworkUniquePtr pll_unetwork(pllmod_unetwork_create_random(num_tips, tip_labels, random_seed));
 

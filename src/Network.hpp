@@ -76,9 +76,6 @@ class Network : public BasicNetwork
 {
 public:
   Network() : BasicNetwork(0), _pll_unetwork(nullptr) {}
-  Network(unsigned int tip_count, const pll_unetwork_node_t& root) :
-    BasicNetwork(tip_count),
-    _pll_unetwork(pll_unetwork_wrapnetwork(pll_unetwork_graph_clone(&root), tip_count)) {}
   Network(const pll_unetwork_t& pll_unetwork) :
     BasicNetwork(pll_unetwork.tip_count), _pll_unetwork(pll_unetwork_clone(&pll_unetwork)) {}
   Network(std::unique_ptr<pll_unetwork_t>&  pll_unetwork) :

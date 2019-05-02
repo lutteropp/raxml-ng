@@ -31,7 +31,7 @@ void NetworkInfo::init(const Options &opts, const Network& network, const Partit
   _partition_contributions.resize(parted_msa.part_count());
   double total_weight = 0;
 
-  _pll_networkinfo = pllmod_networkinfo_create(pll_unetwork_graph_clone(&network.pll_unetwork_root()),
+  _pll_networkinfo = pllmod_networkinfo_create(pll_unetwork_clone(&network.pll_unetwork()),
                                          network.num_tips(),
                                          parted_msa.part_count(), opts.brlen_linkage);
 
@@ -167,7 +167,8 @@ Network NetworkInfo::network(size_t partition_id) const
 
 void NetworkInfo::network(const Network& network)
 {
-	_pll_networkinfo->root = pll_unetwork_graph_clone(&network.pll_unetwork_root());
+	_pll_networkinfo->network = pll_unetwork_clone(&network.pll_unetwork());
+	_pll_networkinfo->root = _pll_networkinfo->network->vroot;
 }
 
 double NetworkInfo::loglh(bool incremental)

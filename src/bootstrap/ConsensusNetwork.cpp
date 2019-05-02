@@ -67,7 +67,7 @@ bool ConsensusNetwork::compute_support()
                << " internal branches." << endl;
 
   /* set consensus network topology */
-  pll_unetwork(_num_tips, *cons_network->network);
+  pll_unetwork(*cons_network->network);
 
   /* map pll_unodes to splits */
   _node_split_map.resize(_pll_unetwork->inner_tree_count + _pll_unetwork->reticulation_count);
