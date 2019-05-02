@@ -31,38 +31,21 @@ char * newick_print_cb(const pll_unetwork_node_t * node)
 
 std::string to_newick_string(const Network& network)
 {
-  char * newick_str = pll_unetwork_export_newick(&network.pll_unetwork_root(), NULL);
+  char * newick_str = pll_unetwork_export_newick(&network.pll_unetwork(), NULL);
   std::string result = newick_str;
   free(newick_str);
   return result;
 }
 
-NetworkNewickStream& operator<<(NetworkNewickStream& stream, const pll_unetwork_node_t& root)
-{
-  auto print_cb = stream.brlens() ? newick_print_cb : newick_name_cb;
-  char * newick_str = pll_unetwork_export_newick(&root, print_cb);
-  if (newick_str)
-  {
-    stream << newick_str << std::endl;
-    free(newick_str);
-  }
-  else
-  {
-    assert(pll_errno);
-    libpll_check_error("Failed to generate Newick");
-  }
-  return stream;
-}
-
 NetworkNewickStream& operator<<(NetworkNewickStream& stream, const pll_unetwork_t& network)
 {
-  stream << *network.vroot;
+  stream << network;
   return stream;
 }
 
 NetworkNewickStream& operator<<(NetworkNewickStream& stream, const Network& network)
 {
-  stream << network.pll_unetwork_root();
+  stream << network.pll_unetwork();
   return stream;
 }
 
