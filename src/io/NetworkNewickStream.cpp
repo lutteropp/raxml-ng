@@ -14,7 +14,7 @@ char * newick_print_cb(const pll_unetwork_node_t * node)
 
   char * newick;
 
-  if (!node_is_reticulation(node))
+  if (!pll_unetwork_is_reticulation(node))
   {
     if (asprintf(&newick, "%s:%.*lf",
              node->label ? node->label : "" , precision, node->length) < 0)
