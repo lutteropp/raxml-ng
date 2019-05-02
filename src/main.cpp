@@ -1632,7 +1632,7 @@ Network generate_network(const RaxmlNetworkInstance& instance, StartingTree type
          of tip nodes in tip_nodes_count */
       *instance.start_network_stream >> network;
 
-      LOG_DEBUG << "Loaded user starting network with " << network.num_tips() << " taxa from: "
+      LOG_DEBUG << "Loaded user starting network with " << network.num_tips() << " taxa and " << network.num_reticulations() << " reticulations from: "
                            << opts.tree_file << endl;
 
       check_network(parted_msa, network);

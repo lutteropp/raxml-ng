@@ -320,6 +320,7 @@ NetworkTopology Network::topology() const {
 	  {
 	    if (n->node_index < n->back->node_index /*&& n->active*/)
 	    {
+	      assert(n->pmatrix_index == n->back->pmatrix_index);
 	      assert(n->pmatrix_index < topol.edges.size());
 	      topol.edges.at(n->pmatrix_index) = NetworkBranch(n->node_index, n->back->node_index, n->length, n->prob);
 	      branches++;
