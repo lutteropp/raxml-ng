@@ -54,8 +54,8 @@ Network& Network::operator=(Network&& other) {
 Network::~Network() {
 }
 
-size_t Network::num_inner_tree() const {
-	return _pll_unetwork ? _pll_unetwork->inner_tree_count : BasicNetwork::num_inner_tree();
+size_t Network::num_inner_induced_tree() const {
+	return _pll_unetwork ? _pll_unetwork->inner_tree_count : BasicNetwork::num_inner_induced_tree();
 }
 
 size_t Network::num_inner() const {
@@ -70,8 +70,8 @@ size_t Network::num_branches() const {
 	return _pll_unetwork ? _pll_unetwork->edge_count : BasicNetwork::num_branches();
 }
 
-size_t Network::num_tree_branches() const {
-	return _pll_unetwork ? _pll_unetwork->tree_edge_count : BasicNetwork::num_tree_branches();
+size_t Network::num_branches_induced_tree() const {
+	return _pll_unetwork ? _pll_unetwork->tree_edge_count : BasicNetwork::num_branches_induced_tree();
 }
 
 bool Network::binary() const {

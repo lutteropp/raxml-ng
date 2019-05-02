@@ -58,13 +58,13 @@ public:
   bool empty() const { return _num_tips == 0; };
   virtual bool binary() const { return true; };
   virtual size_t num_tips() const { return _num_tips; };
-  virtual size_t num_inner_tree() const {return _num_tips - 2;};
+  virtual size_t num_inner_induced_tree() const {return _num_tips - 2;};
   virtual size_t num_reticulations() const {return _num_reticulations;}
-  virtual size_t num_inner() const { return num_inner_tree() + num_reticulations(); };
+  virtual size_t num_inner() const { return num_inner_induced_tree() + 2 * num_reticulations(); };
   virtual size_t num_nodes() const { return num_tips() + num_inner(); };
   virtual size_t num_subnodes() const { return num_branches() * 2; };
-  virtual size_t num_branches() const { return _num_tips + _num_tips - 3 + num_reticulations(); };
-  virtual size_t num_tree_branches() const { return _num_tips + _num_tips - 3; };
+  virtual size_t num_branches() const { return num_inner() * 2; };
+  virtual size_t num_branches_induced_tree() const { return _num_tips + _num_tips - 3; };
   virtual size_t num_splits() const { return num_branches() - _num_tips; };
 
 protected:
@@ -136,10 +136,10 @@ public:
 public:
   bool binary() const;
   size_t num_inner() const;
-  size_t num_inner_tree() const;
+  size_t num_inner_induced_tree() const;
   size_t num_reticulations() const;
   size_t num_branches() const;
-  size_t num_tree_branches() const;
+  size_t num_branches_induced_tree() const;
 
 protected:
   PllUNetworkUniquePtr _pll_unetwork;
