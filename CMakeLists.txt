@@ -41,10 +41,10 @@ endif()
 
 # set these flags globally for all subprojects (libpll etc.)
 #set (CMAKE_CXX_FLAGS_DEBUG    "-O3 -g" CACHE INTERNAL "")
-set (CMAKE_CXX_FLAGS_DEBUG    "-g" CACHE INTERNAL "")
+set (CMAKE_CXX_FLAGS_DEBUG    "-O0 -g" CACHE INTERNAL "")
 set (CMAKE_CXX_FLAGS_RELEASE  "-O3"    CACHE INTERNAL "")
 #set (CMAKE_C_FLAGS_DEBUG    "-O3 -g" CACHE INTERNAL "")
-set (CMAKE_C_FLAGS_DEBUG    "-g" CACHE INTERNAL "")
+set (CMAKE_C_FLAGS_DEBUG    "-O0 -g" CACHE INTERNAL "")
 set (CMAKE_C_FLAGS_RELEASE  "-O3"    CACHE INTERNAL "")
 
 project (raxml-ng C CXX)
