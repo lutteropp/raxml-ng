@@ -3,6 +3,7 @@
 
 #include "../Model.hpp"
 #include "../Tree.hpp"
+#include "../Network.hpp"
 
 enum class ModelBinaryFmt
 {
@@ -207,10 +208,22 @@ BasicBinaryStream& operator<<(BasicBinaryStream& stream, const TreeTopology& t);
 BasicBinaryStream& operator>>(BasicBinaryStream& stream, TreeTopology& t);
 
 /**
+ * NetworkTopology I/O
+ */
+BasicBinaryStream& operator<<(BasicBinaryStream& stream, const NetworkTopology& t);
+BasicBinaryStream& operator>>(BasicBinaryStream& stream, NetworkTopology& t);
+
+/**
  * TreeCollection I/O
  */
 BasicBinaryStream& operator<<(BasicBinaryStream& stream, const TreeCollection& c);
 BasicBinaryStream& operator>>(BasicBinaryStream& stream, TreeCollection& c);
+
+/**
+ * NetworkCollection I/O
+ */
+BasicBinaryStream& operator<<(BasicBinaryStream& stream, const NetworkCollection& c);
+BasicBinaryStream& operator>>(BasicBinaryStream& stream, NetworkCollection& c);
 
 #endif
 

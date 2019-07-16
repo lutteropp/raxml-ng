@@ -229,7 +229,23 @@ BasicBinaryStream& operator<<(BasicBinaryStream& stream, const TreeTopology& t)
   return stream;
 }
 
+BasicBinaryStream& operator<<(BasicBinaryStream& stream, const NetworkTopology& t)
+{
+  stream << t.edges;
+  stream << t.brlens;
+
+  return stream;
+}
+
 BasicBinaryStream& operator>>(BasicBinaryStream& stream, TreeTopology& t)
+{
+  stream >> t.edges;
+  stream >> t.brlens;
+
+  return stream;
+}
+
+BasicBinaryStream& operator>>(BasicBinaryStream& stream, NetworkTopology& t)
 {
   stream >> t.edges;
   stream >> t.brlens;
@@ -245,6 +261,14 @@ BasicBinaryStream& operator<<(BasicBinaryStream& stream, const TreeCollection& c
   return stream;
 }
 
+BasicBinaryStream& operator<<(BasicBinaryStream& stream, const NetworkCollection& c)
+{
+  stream << c.size();
+  for (const auto tree: c)
+    stream << tree.first << tree.second;
+  return stream;
+}
+
 BasicBinaryStream& operator>>(BasicBinaryStream& stream, TreeCollection& c)
 {
   auto size = stream.get<size_t>();
@@ -252,6 +276,17 @@ BasicBinaryStream& operator>>(BasicBinaryStream& stream, TreeCollection& c)
   {
     auto score = stream.get<double>();
     c.push_back(score, stream.get<TreeTopology>());
+  }
+  return stream;
+}
+
+BasicBinaryStream& operator>>(BasicBinaryStream& stream, NetworkCollection& c)
+{
+  auto size = stream.get<size_t>();
+  for (size_t i = 0; i < size; ++i)
+  {
+    auto score = stream.get<double>();
+    c.push_back(score, stream.get<NetworkTopology>());
   }
   return stream;
 }
