@@ -319,7 +319,7 @@ NetworkTopology Network::topology() const {
 	  size_t branches = 0;
 	  for (auto n: subnodes())
 	  {
-	    if (n->node_index < n->back->node_index /*&& n->active*/)
+	    if (!n->incoming)
 	    {
 	      assert(n->pmatrix_index == n->back->pmatrix_index);
 	      assert(n->pmatrix_index < topol.edges.size());
