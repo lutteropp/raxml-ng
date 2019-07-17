@@ -341,11 +341,11 @@ void Network::topology(const NetworkTopology& topol) {
 	if (topol.edges.size() != num_branches())
 		throw runtime_error("Incompatible topology!");
 
-	auto allnodes = nodes();
+	auto allnodes = subnodes();
 	unsigned int pmatrix_index = 0;
 	for (const auto& branch : topol) {
 		pll_unetwork_node_t * left_node = allnodes.at(branch.left_node_id);
-		pll_unetwork_node_t * right_node = allnodes.at(branch.right_node_id);
+		pll_unetwork_node_t * right_node = allnodes.at(branch.right_node_id); // TODO: Here is a bug! Why was right_node_id so large???
 		pllmod_unetwork_connect_nodes(left_node, right_node, branch.length, branch.prob);
 
 		// important: make sure all branches have distinct pmatrix indices!

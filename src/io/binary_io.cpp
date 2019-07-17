@@ -264,8 +264,8 @@ BasicBinaryStream& operator<<(BasicBinaryStream& stream, const TreeCollection& c
 BasicBinaryStream& operator<<(BasicBinaryStream& stream, const NetworkCollection& c)
 {
   stream << c.size();
-  for (const auto tree: c)
-    stream << tree.first << tree.second;
+  for (const auto network: c)
+    stream << network.first << network.second;
   return stream;
 }
 
