@@ -93,7 +93,7 @@ void NetworkInfo::init(const Options &opts, const Network& network, const Partit
 
 NetworkInfo::NetworkInfo (const Options &opts, const Network& network, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
-                    const PartitionAssignment& part_assign) : _pll_networkinfo(nullptr), _brlen_max(0), _brlen_min(0), _brlen_opt_method(0)
+                    const PartitionAssignment& part_assign) : _pll_networkinfo(nullptr), _brlen_opt_method(0), _brlen_min(0), _brlen_max(0)
 {
   init(opts, network, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
 }
@@ -101,7 +101,7 @@ NetworkInfo::NetworkInfo (const Options &opts, const Network& network, const Par
 NetworkInfo::NetworkInfo (const Options &opts, const Network& network, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
-                    const std::vector<uintVector>& site_weights) : _pll_networkinfo(nullptr), _brlen_max(0), _brlen_min(0), _brlen_opt_method(0)
+                    const std::vector<uintVector>& site_weights) : _pll_networkinfo(nullptr), _brlen_opt_method(0), _brlen_min(0), _brlen_max(0)
 {
   init(opts, network, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
