@@ -603,8 +603,8 @@ pll_partition_t* create_pll_partition_network(const Options& opts, const Partiti
     attrs |= (unsigned int) model.ascbias_type();
   }
 
-  unsigned int max_inner_nodes = msa.size() + MAX_RETICULATIONS;
-  unsigned int max_num_branches = msa.size() * 2 + MAX_RETICULATIONS;
+  unsigned int max_inner_nodes = msa.size() + MAX_RETICULATIONS + 1;
+  unsigned int max_num_branches = msa.size() * 2 + MAX_RETICULATIONS + 1;
 
   pll_partition_t * partition = pll_partition_create(
 	  msa.size(),         /* number of tip sequences */
