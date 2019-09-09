@@ -16,11 +16,11 @@ Documentation: [github wiki](https://github.com/amkozlov/raxml-ng/wiki)
 ## Installation instructions
 
 * For most desktop Unix/Linux and macOS systems, the easiest way to install RAxML-NG is by using the pre-compiled binary:  
-[**Download 64-bit Linux binary**](https://github.com/amkozlov/raxml-ng/releases/download/0.8.1/raxml-ng_v0.8.1_linux_x86_64.zip)  
-[**Download 64-bit OSX/macOS binary**](https://github.com/amkozlov/raxml-ng/releases/download/0.8.1/raxml-ng_v0.8.1_macos_x86_64.zip)
+[**Download 64-bit Linux binary**](https://github.com/amkozlov/raxml-ng/releases/download/0.9.0/raxml-ng_v0.9.0_linux_x86_64.zip)  
+[**Download 64-bit OSX/macOS binary**](https://github.com/amkozlov/raxml-ng/releases/download/0.9.0/raxml-ng_v0.9.0_macos_x86_64.zip)
 
 * For clusters/supercomputers (i.e., if you want to use MPI), please use the following installation package which contains pre-built *libpll*. You will need `GCC 6.4+` and `CMake 3.0.2+` in order to compile RAxML-NG for your system.  
-[**Download RAxML-NG-MPI for Linux**](https://github.com/amkozlov/raxml-ng/releases/download/0.8.1/raxml-ng_v0.8.1_linux_x86_64_MPI.zip)
+[**Download RAxML-NG-MPI for Linux**](https://github.com/amkozlov/raxml-ng/releases/download/0.9.0/raxml-ng_v0.9.0_linux_x86_64_MPI.zip)
 
 * Binaries for Windows will become available later on
 
@@ -103,12 +103,12 @@ If still in doubt, please feel free to post to the [RAxML google group](https://
 
 The code is currently licensed under the GNU Affero General Public License version 3.
 
-When using RAxML-NG, please cite [this preprint](https://www.biorxiv.org/content/early/2018/10/18/447110):
+When using RAxML-NG, please cite [this paper](https://doi.org/10.1093/bioinformatics/btz305):
 
-Alexey M. Kozlov, Diego Darriba, Tom&aacute;&scaron; Flouri, Benoit Morel, and Alexandros Stamatakis (2018)
+Alexey M. Kozlov, Diego Darriba, Tom&aacute;&scaron; Flouri, Benoit Morel, and Alexandros Stamatakis (2019)
 **RAxML-NG: A fast, scalable, and user-friendly tool for maximum likelihood phylogenetic inference.** 
-*bioRxiv.* 
-doi:[10.1101/447110](https://doi.org/10.1101/447110)
+*Bioinformatics, btz305* 
+doi:[10.1093/bioinformatics/btz305](https://doi.org/10.1093/bioinformatics/btz305)
 
 ## The team
 
@@ -117,6 +117,8 @@ doi:[10.1101/447110](https://doi.org/10.1101/447110)
 * Diego Darriba
 * Tom&aacute;&scaron; Flouri
 * Benoit Morel
+* Ben Bettisworth
+* Sarah Lutteropp
 
 ## References
 

@@ -34,6 +34,10 @@ void Options::set_default_outfiles()
   set_default_outfile(outfile_names.binary_msa, "rba");
   set_default_outfile(outfile_names.bootstrap_msa, "bootstrapMSA");
   set_default_outfile(outfile_names.rfdist, "rfDistances");
+  set_default_outfile(outfile_names.cons_tree, "consensusTree");
+  set_default_outfile(outfile_names.asr_tree, "ancestralTree");
+  set_default_outfile(outfile_names.asr_probs, "ancestralProbs");
+  set_default_outfile(outfile_names.asr_states, "ancestralStates");
 }
 
 const std::string& Options::support_tree_file(BranchSupportMetric bsm) const
@@ -91,6 +95,11 @@ bool Options::result_files_exist() const
              sysutil_file_exists(bootstrap_partition_file());
     case Command::rfdist:
       return sysutil_file_exists(rfdist_file());
+    case Command::consense:
+      return sysutil_file_exists(cons_tree_file());
+    case Command::ancestral:
+      return sysutil_file_exists(asr_tree_file()) || sysutil_file_exists(asr_probs_file()) ||
+             sysutil_file_exists(asr_states_file());
     default:
       return false;
   }
@@ -145,10 +154,18 @@ void Options::remove_result_files() const
   }
 
   if (command == Command::rfdist)
+    sysutil_file_remove(rfdist_file());
+
+  if (command == Command::consense)
+    sysutil_file_remove(cons_tree_file());
+
+  if (command == Command::consense)
   {
-    if (sysutil_file_exists(rfdist_file()))
-      std::remove(rfdist_file().c_str());
+    sysutil_file_remove(asr_tree_file());
+    sysutil_file_remove(asr_probs_file());
+    sysutil_file_remove(asr_states_file());
   }
+
 }
 
 string Options::simd_arch_name() const
@@ -172,6 +189,24 @@ string Options::simd_arch_name() const
       break;
     default:
       return "UNKNOWN";
+  }
+}
+
+string Options::consense_type_name() const
+{
+  switch(consense_cutoff)
+  {
+    case 0:
+      return "MRE";
+      break;
+    case 50:
+      return "MR";
+      break;
+    case 100:
+      return "STRICT";
+      break;
+    default:
+      return "MR" + to_string(consense_cutoff);
   }
 }
 
@@ -221,6 +256,12 @@ std::ostream& operator<<(std::ostream& stream, const Options& opts)
     case Command::rfdist:
       stream << "RF distance computation";
       break;
+    case Command::consense:
+      stream << "Build consensus tree";
+      break;
+    case Command::ancestral:
+      stream << "Ancestral state reconstruction";
+      break;
     default:
       break;
   }
@@ -245,6 +286,13 @@ std::ostream& operator<<(std::ostream& stream, const Options& opts)
     }
     stream << ")";
   }
+
+  if (opts.command == Command::consense)
+  {
+    stream << " (" << opts.consense_type_name() << ")";
+  }
+
+  /* end of run mode line */
   stream << endl;
 
   stream << "  start tree(s): ";
@@ -303,7 +351,7 @@ std::ostream& operator<<(std::ostream& stream, const Options& opts)
 
   if (opts.command == Command::bootstrap || opts.command == Command::all ||
       opts.command == Command::search || opts.command == Command::evaluate ||
-      opts.command == Command::parse)
+      opts.command == Command::parse || opts.command == Command::ancestral)
   {
     stream << "  tip-inner: " << (opts.use_tip_inner ? "ON" : "OFF") << endl;
     stream << "  pattern compression: " << (opts.use_pattern_compression ? "ON" : "OFF") << endl;

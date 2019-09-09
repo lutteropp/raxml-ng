@@ -20,6 +20,10 @@ void Checkpoint::save_bs_tree()
 
 void CheckpointManager::write(const std::string& ckp_fname) const
 {
+  /* for now, only master thread in master MPI rank will write ckp file */
+  if (!ParallelContext::master())
+    return;
+
   backup();
 
   BinaryFileStream fs(ckp_fname, std::ios::out);
@@ -138,7 +142,7 @@ void CheckpointManager::update_and_write(const TreeInfo& treeinfo)
   if (ParallelContext::num_ranks() > 1)
     gather_model_params();
 
-  if (ParallelContext::master())
+  if (ParallelContext::master_thread())
   {
     assign_tree(_checkp, treeinfo);
     write();
@@ -203,7 +207,7 @@ BasicBinaryStream& operator>>(BasicBinaryStream& stream, Checkpoint& ckp)
 {
   stream >> ckp.version;
 
-  if (ckp.version < CKP_MIN_SUPPORTED_VERSION)
+  if (ckp.version < RAXML_CKP_MIN_SUPPORTED_VERSION || ckp.version > RAXML_CKP_VERSION)
   {
     throw runtime_error("Unsupported checkpoint file version!");
   }

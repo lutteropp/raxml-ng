@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <map>
 
 enum class LogLevel
 {
@@ -22,9 +23,12 @@ enum class LogElement
   all = 0,
   loglh,
   model,
-  brlen
+  brlen,
+  other
 };
 
+
+typedef std::map<LogElement, unsigned int> LogElementMap;
 
 struct TimeStamp
 {
@@ -46,7 +50,7 @@ class LogStream
 {
 public:
   LogStream() {};
-  LogStream(const StreamList& streams) { _streams = streams; };
+  LogStream(const StreamList& streams) : _streams(streams) {};
 
   StreamList& streams() { return _streams;};
 
@@ -69,6 +73,7 @@ public:
   void set_log_filename(const std::string& fname, std::ios_base::openmode mode = std::ios::out);
   void add_log_stream(std::ostream* stream);
 
+  void precision(const LogElementMap& prec);
   void precision(unsigned int prec, LogElement elem = LogElement::all);
   unsigned int precision(LogElement elem) const;
 
@@ -85,10 +90,7 @@ private:
   std::ofstream _logfile;
   LogStream _empty_stream;
   LogStream _full_stream;
-
-  unsigned int _precision_loglh;
-  unsigned int _precision_model;
-  unsigned int _precision_brlen;
+  LogElementMap _precision;
 };
 
 Logging& logger();

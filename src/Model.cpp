@@ -11,15 +11,24 @@ const vector<int> ALL_MODEL_PARAMS = {PLLMOD_OPT_PARAM_FREQUENCIES, PLLMOD_OPT_P
 const unordered_map<DataType,unsigned int,EnumClassHash>  DATATYPE_STATES { {DataType::dna, 4},
                                                                             {DataType::protein, 20},
                                                                             {DataType::binary, 2},
-                                                                            {DataType::diploid10, 10}
+                                                                            {DataType::genotype10, 10}
                                                                           };
 
 const unordered_map<DataType,const pll_state_t*,EnumClassHash>  DATATYPE_MAPS {
   {DataType::dna, pll_map_nt},
   {DataType::protein, pll_map_aa},
   {DataType::binary, pll_map_bin},
-  {DataType::diploid10, pll_map_diploid10}
+  {DataType::genotype10, pll_map_gt10}
 };
+
+const unordered_map<DataType,string,EnumClassHash>  DATATYPE_PREFIX { {DataType::dna, "DNA"},
+                                                                      {DataType::protein, "PROT"},
+                                                                      {DataType::binary, "BIN"},
+                                                                      {DataType::genotype10, "GT"},
+                                                                      {DataType::multistate, "MULTI"},
+                                                                      {DataType::autodetect, "AUTO"}
+                                                                    };
+
 
 
 // TODO move it out of here
@@ -48,8 +57,8 @@ static bool read_param(istringstream& s, string& val)
     // consume the opening bracket
     s.get();
 
-    char str[1024];
-    if (!s.getline(str, 1024, delim))
+    string str;
+    if (!std::getline(s, str, delim))
       throw parse_error();
     val = str;
 
@@ -110,8 +119,8 @@ static bool read_param_file(istringstream& s, std::vector<T>& vec)
     // consume the opening bracket
     s.get();
 
-    char fname[1024];
-    s.getline(fname, 1024, delim);
+    string fname;
+    std::getline(s, fname, delim);
     if (sysutil_file_exists(fname))
     {
       ifstream fs(fname);
@@ -207,7 +216,7 @@ std::string Model::data_type_name() const
       return "DNA";
     case DataType::protein:
       return "AA";
-    case DataType::diploid10:
+    case DataType::genotype10:
       return "GT";
     case DataType::multistate:
       return "MULTI" + std::to_string(_num_states);
@@ -224,7 +233,7 @@ void Model::autodetect_data_type(const std::string &model_name)
   {
     if (pllmod_util_model_exists_genotype(model_name.c_str()))
     {
-      _data_type = DataType::diploid10;
+      _data_type = DataType::genotype10;
     }
     else if (pllmod_util_model_exists_mult(model_name.c_str()))
     {
@@ -239,9 +248,23 @@ void Model::autodetect_data_type(const std::string &model_name)
     {
       _data_type = DataType::protein;
     }
-    else
+    else if (pllmod_util_model_exists_dna(model_name.c_str()))
     {
       _data_type = DataType::dna;
+    }
+    else
+    {
+      /* try to guess datatype from model prefix */
+      if (isprefix(model_name, "DNA"))
+        _data_type = DataType::dna;
+      else if (isprefix(model_name, "PROT"))
+        _data_type = DataType::protein;
+      else if (isprefix(model_name, "GT"))
+        _data_type = DataType::genotype10;
+      else if (isprefix(model_name, "MULTI"))
+        _data_type = DataType::multistate;
+      else
+        _data_type = DataType::dna;   /* assume DNA by default & hope for the best */
     }
   }
 }
@@ -249,6 +272,7 @@ void Model::autodetect_data_type(const std::string &model_name)
 pllmod_mixture_model_t * Model::init_mix_model(const std::string &model_name)
 {
   const char * model_cstr = model_name.c_str();
+  const std::string& prefix = DATATYPE_PREFIX.at(_data_type);
   pllmod_mixture_model_t * mix_model = nullptr;
 
   if (pllmod_util_model_exists_protmix(model_cstr))
@@ -272,7 +296,7 @@ pllmod_mixture_model_t * Model::init_mix_model(const std::string &model_name)
     {
       modinfo =  pllmod_util_model_create_custom("BIN", 2, NULL, NULL, NULL, NULL);
     }
-    else if (_data_type == DataType::diploid10)
+    else if (_data_type == DataType::genotype10)
     {
       modinfo =  pllmod_util_model_info_genotype(model_cstr);
     }
@@ -281,10 +305,15 @@ pllmod_mixture_model_t * Model::init_mix_model(const std::string &model_name)
       modinfo =  pllmod_util_model_info_mult(model_cstr);
     }
 
-    // TODO: user models must be defined explicitly
-//    /* pre-defined model not found; assume model string encodes rate symmetries */
-//    if (!modinfo)
-//      modinfo =  pllmod_util_model_create_custom("USER", _num_states, NULL, NULL, model_cstr, NULL);
+    /* pre-defined model not found; assume model string encodes rate symmetries */
+    if (!modinfo && isprefix(model_name, prefix) && _data_type != DataType::multistate)
+    {
+      pllmod_reset_error();
+
+      const char * custom_sym_cstr = model_cstr + prefix.size();
+      modinfo =  pllmod_util_model_create_custom(model_cstr, _num_states, NULL, NULL,
+                                                 custom_sym_cstr, NULL);
+    }
 
     if (!modinfo)
     {
@@ -1011,6 +1040,50 @@ unsigned int Model::num_free_params() const
   return free_params;
 }
 
+void Model::init_state_names() const
+{
+  auto map = charmap();
+
+  if (!charmap())
+    return;
+
+  _state_names.resize(_num_states);
+
+  for (size_t i = 0; i < PLL_ASCII_SIZE; ++i)
+  {
+    auto state = map[i];
+    auto popcnt = PLL_STATE_POPCNT(state);
+    if (popcnt > 0 && !_full_state_namemap.count(state))
+    {
+      string state_name;
+      state_name = (char) i;
+
+      _full_state_namemap[state] = state_name;
+
+      if (popcnt == 1)
+      {
+        auto idx = PLL_STATE_CTZ(state);
+        _state_names[idx] = state_name;
+      }
+    }
+  }
+}
+
+const NameList& Model::state_names() const
+{
+  if (_state_names.empty())
+    init_state_names();
+
+  return _state_names;
+}
+
+const StateNameMap& Model::full_state_namemap() const
+{
+  if (_full_state_namemap.empty())
+    init_state_names();
+
+  return _full_state_namemap;
+}
 
 void assign(Model& model, const pll_partition_t * partition)
 {

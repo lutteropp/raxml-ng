@@ -72,6 +72,8 @@ static struct option long_options[] =
   {"bsmsa",              no_argument, 0, 0 },        /*  49 */
   {"rfdist",             optional_argument, 0, 0 },  /*  50 */
   {"rf",                 optional_argument, 0, 0 },  /*  51 */
+  {"consense",           optional_argument, 0, 0 },  /*  52 */
+  {"ancestral",          optional_argument, 0, 0 },  /*  53 */
 
   { 0, 0, 0, 0 }
 };
@@ -90,14 +92,16 @@ void CommandLineParser::check_options(Options &opts)
   if (opts.command == Command::evaluate || opts.command == Command::search ||
       opts.command == Command::bootstrap || opts.command == Command::all ||
       opts.command == Command::terrace || opts.command == Command::check ||
-      opts.command == Command::parse || opts.command == Command::start)
+      opts.command == Command::parse || opts.command == Command::start ||
+      opts.command == Command::ancestral)
   {
     if (opts.msa_file.empty())
       throw OptionException("You must specify a multiple alignment file with --msa switch");
   }
 
   if (opts.command == Command::evaluate || opts.command == Command::support ||
-      opts.command == Command::terrace || opts.command == Command::rfdist)
+      opts.command == Command::terrace || opts.command == Command::rfdist ||
+      opts.command == Command::ancestral)
   {
     if (opts.tree_file.empty())
       throw OptionException("Please provide a valid Newick file as an argument of --tree option.");
@@ -147,6 +151,14 @@ void CommandLineParser::check_options(Options &opts)
     }
   }
 
+  if (opts.num_bootstraps > 0 && opts.command != Command::bsmsa &&
+      opts.command != Command::bootstrap && opts.command != Command::all)
+  {
+    throw OptionException("You specified the number of bootstrap replicates with --bs-trees option, "
+        "but the current command does not perform bootstrapping.\n"
+        "Did you forget --all option?");
+  }
+
   if (opts.simd_arch > sysutil_simd_autodetect())
   {
     if (opts.force_mode)
@@ -163,7 +175,8 @@ void CommandLineParser::check_options(Options &opts)
 void CommandLineParser::compute_num_searches(Options &opts)
 {
   if (opts.command == Command::search || opts.command == Command::all ||
-      opts.command == Command::evaluate || opts.command == Command::start)
+      opts.command == Command::evaluate || opts.command == Command::start ||
+      opts.command == Command::ancestral)
   {
     if (opts.start_trees.empty())
     {
@@ -248,9 +261,6 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
   /* optimize model and branch lengths */
   opts.optimize_model = true;
   opts.optimize_brlen = true;
-
-  /* data type: default autodetect */
-//  useropt->data_type = RAXML_DATATYPE_AUTO;
 
   /* initialize LH epsilon with default value */
   opts.lh_epsilon = DEF_LH_EPSILON;
@@ -373,7 +383,7 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         else if (strcasecmp(optarg, "binary") == 0 || strcasecmp(optarg, "bin") == 0)
           opts.data_type = DataType::binary;
         else if (strcasecmp(optarg, "diploid10") == 0)
-          opts.data_type = DataType::diploid10;
+          opts.data_type = DataType::genotype10;
         else if (strcasecmp(optarg, "multi") == 0)
           opts.data_type = DataType::multistate;
         else if (strcasecmp(optarg, "auto") == 0)
@@ -424,7 +434,7 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         break;
 
       case 15:  /* spr-radius = maximum radius for fast SPRs */
-        if (sscanf(optarg, "%u", &opts.spr_radius) != 1)
+        if (sscanf(optarg, "%d", &opts.spr_radius) != 1 || opts.spr_radius <= 0)
         {
           throw InvalidOptionValueException("Invalid SPR radius: " + string(optarg) +
                                             ", please provide a positive integer!");
@@ -544,7 +554,7 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         break;
       case 26:  /* number of bootstrap replicates */
         opts.bootstop_criterion = BootstopCriterion::none;
-        if (sysutil_file_exists(optarg))
+        if (sysutil_file_exists(optarg) && !sysutil_isnumber(optarg))
         {
           opts.outfile_names.bootstrap_trees = optarg;
         }
@@ -646,6 +656,8 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
                                             string(optarg) +
                                             ", please provide a positive real number.");
         }
+        if (opts.precision.empty() && opts.brlen_min < 1.)
+          opts.precision[LogElement::brlen] = ceil(-1 * log10(opts.brlen_min));
         break;
       case 37: /* max brlen */
         if(sscanf(optarg, "%lf", &opts.brlen_max) != 1 || opts.brlen_max <= 0.)
@@ -675,10 +687,18 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         num_commands++;
         break;
       case 42:  /* precision */
-        if (sscanf(optarg, "%u", &opts.precision) != 1 || opts.precision == 0)
         {
-          throw InvalidOptionValueException("Invalid precision: %s " + string(optarg) +
-                                            ", please provide a positive integer number!");
+          unsigned int prec = 0;
+          if (sscanf(optarg, "%u", &prec) != 1 || prec == 0)
+          {
+            throw InvalidOptionValueException("Invalid precision: " + string(optarg) +
+                                              ", please provide a positive integer number!");
+          }
+          else
+          {
+            opts.precision.clear();
+            opts.precision[LogElement::all] = prec;
+          }
         }
         break;
       case 43:  /* outgroup */
@@ -790,6 +810,40 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
           parse_start_trees(opts, optarg);
         break;
 
+      case 52: /* build consensus tree */
+        opts.command = Command::consense;
+        num_commands++;
+        if (optarg)
+        {
+          if (strcasecmp(optarg, "mr") == 0)
+            opts.consense_cutoff = ConsenseCutoff::MR;
+          else if (strcasecmp(optarg, "mre") == 0)
+            opts.consense_cutoff = ConsenseCutoff::MRE;
+          else if (strcasecmp(optarg, "strict") == 0)
+            opts.consense_cutoff = ConsenseCutoff::strict;
+          else if (sscanf(optarg, "%*[Mm]%*[Rr]%u", &opts.consense_cutoff) != 1 ||
+                   opts.consense_cutoff < 50 || opts.consense_cutoff > 100)
+          {
+            auto errmsg = "Invalid consensus type or threshold value: " +
+                          string(optarg) + "\n" +
+                          "Allowed values: MR, MRE, STRICT or MR<n>, where 50 <= n <= 100.";
+            throw  InvalidOptionValueException(errmsg);
+          }
+        }
+        else
+          opts.consense_cutoff = ConsenseCutoff::MR;
+        break;
+
+      case 53: /* ancestral state reconstruction */
+        opts.command = Command::ancestral;
+        opts.use_pattern_compression = false;
+        opts.use_repeats = false;
+        opts.use_tip_inner = true;
+        if (opts.precision.empty())
+          opts.precision[LogElement::other] = 5;
+        num_commands++;
+        break;
+
       default:
         throw  OptionException("Internal error in option parsing");
     }
@@ -832,9 +886,9 @@ void CommandLineParser::print_help()
             "  --help                                     display help information\n"
             "  --version                                  display version information\n"
             "  --evaluate                                 evaluate the likelihood of a tree (with model+brlen optimization)\n"
-            "  --search                                   ML tree search.\n"
-            "  --bootstrap                                bootstrapping\n"
-            "  --all                                      all-in-one (ML search + bootstrapping).\n"
+            "  --search                                   ML tree search (default: 10 parsimony + 10 random starting trees)\n"
+            "  --bootstrap                                bootstrapping (default: use bootstopping to auto-detect #replicates)\n"
+            "  --all                                      all-in-one (ML search + bootstrapping)\n"
             "  --support                                  compute bipartition support for a given reference tree (e.g., best ML tree)\n"
             "                                             and a set of replicate trees (e.g., from a bootstrap analysis)\n"
             "  --bsconverge                               test for bootstrapping convergence using autoMRE criterion\n"
@@ -846,6 +900,9 @@ void CommandLineParser::print_help()
             "  --parse                                    parse alignment, compress patterns and create binary MSA file\n"
             "  --start                                    generate parsimony/random starting trees and exit\n"
             "  --rfdist                                   compute pair-wise Robinson-Foulds (RF) distances between trees\n"
+            "  --consense [ STRICT | MR | MR<n> | MRE ]   build strict, majority-rule (MR) or extended MR (MRE) consensus tree (default: MR)\n"
+            "                                             eg: --consense MR75 --tree bsrep.nw\n"
+            "  --ancestral                                ancestral state reconstruction at all inner nodes\n"
             "\n"
             "Command shortcuts (mutually exclusive):\n"
             "  --search1                                  Alias for: --search --tree rand{1}\n"
@@ -869,15 +926,15 @@ void CommandLineParser::print_help()
             "General options:\n"
             "  --seed         VALUE                       seed for pseudo-random number generator (default: current time)\n"
             "  --pat-comp     on | off                    alignment pattern compression (default: ON)\n"
-            "  --tip-inner    on | off                    tip-inner case optimization (default: ON)\n"
+            "  --tip-inner    on | off                    tip-inner case optimization (default: OFF)\n"
             "  --site-repeats on | off                    use site repeats optimization, 10%-60% faster than tip-inner (default: ON)\n" <<
             "  --threads      VALUE                       number of parallel threads to use (default: " << sysutil_get_cpu_cores() << ")\n" <<
             "  --simd         none | sse3 | avx | avx2    vector instruction set to use (default: auto-detect).\n"
-            "  --rate-scalers on | off                    use individual CLV scalers for each rate category (default: OFF)\n"
-            "  --force                                    disable all safety checks (please think twice!)\n"
+            "  --rate-scalers on | off                    use individual CLV scalers for each rate category (default: ON for >2000 taxa)\n"
+            "  --force        [ <CHECKS> ]                disable safety checks (please think twice!)\n"
             "\n"
             "Model options:\n"
-            "  --model        <name>+G[n]+<Freqs> | FILE  model specification OR partition file (default: GTR+G4)\n"
+            "  --model        <name>+G[n]+<Freqs> | FILE  model specification OR partition file\n"
             "  --brlen        linked | scaled | unlinked  branch length linkage between partitions (default: scaled)\n"
             "  --blmin        VALUE                       minimum branch length (default: 1e-6)\n"
             "  --blmax        VALUE                       maximum branch length (default: 100)\n"
