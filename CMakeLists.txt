@@ -153,3 +153,5 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 
 enable_testing()
 add_subdirectory(${PROJECT_SOURCE_DIR}/test/src)
+
+set(RAXML_LIBS ${RAXML_LIBS} PARENT_SCOPE)
