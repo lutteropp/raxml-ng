@@ -62,6 +62,26 @@ public:
   void compute_ancestral(const AncestralStatesSharedPtr& ancestral,
                          const PartitionAssignment& part_assign);
 
+  double (*opt_brlen_function)(pllmod_treeinfo_t *, // treeinfo
+                                          double, // min_brlen
+                                          double, // max_brlen
+                                          double, // lh_epsilon
+                                          int, // max_iters
+                                          int, // opt_method
+                                          int); // radius
+  double (*spr_round_function)(pllmod_treeinfo_t *, // treeinfo
+                                            unsigned int, // radius_min
+                                            unsigned int, // radius_max
+                                            unsigned int, // ntopol_keep
+                                            pll_bool_t, // thorough
+                                            int, // brlen_opt_method
+                                            double, // bl_min
+                                            double, // bl_max
+                                            int, // smoothings
+                                            double, // epsilon
+                                            cutoff_info_t *, // cutoff_info
+                                            double); // subtree_cutoff
+  pllmod_ancestral_t * (*compute_ancestral_function)(pllmod_treeinfo_t *); // treeinfo
 private:
   pllmod_treeinfo_t * _pll_treeinfo;
   IDSet _parts_master;
