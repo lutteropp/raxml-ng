@@ -6,7 +6,7 @@
 class TransferBootstrapTree : public SupportTree
 {
 public:
-  TransferBootstrapTree(const Tree& tree, bool naive = false);
+  TransferBootstrapTree(const AbstractTree& tree, bool naive = false);
   virtual ~TransferBootstrapTree();
 
 protected:

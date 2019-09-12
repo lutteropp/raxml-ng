@@ -31,7 +31,6 @@
 #include "Optimizer.hpp"
 #include "PartitionInfo.hpp"
 #include "PartitionedMSAView.hpp"
-#include "TreeInfo.hpp"
 #include "io/file_io.hpp"
 #include "io/binary_io.hpp"
 #include "ParallelContext.hpp"
@@ -43,6 +42,7 @@
 #include "autotune/ResourceEstimator.hpp"
 #include "ICScoreCalculator.hpp"
 #include "topology/RFDistCalculator.hpp"
+#include "TreeInfo.hpp"
 
 #ifdef _RAXML_TERRAPHAST
 #include "terraces/TerraceWrapper.hpp"
@@ -81,10 +81,10 @@ struct RaxmlInstance
 
   /* this is just a dummy random tree used for convenience, e,g, if we need tip labels or
    * just 'any' valid tree for the alignment at hand */
-  Tree random_tree;
+  AbstractTree random_tree;
 
   /* topological constraint */
-  Tree constraint_tree;
+  AbstractTree constraint_tree;
 
   unique_ptr<RFDistCalculator> dist_calculator;
   AncestralStatesSharedPtr ancestral_states;
@@ -608,7 +608,7 @@ void check_models(const RaxmlInstance& instance)
   }
 }
 
-void check_tree(const PartitionedMSA& msa, const Tree& tree)
+void check_tree(const PartitionedMSA& msa, const AbstractTree& tree)
 {
   auto missing_taxa = 0;
   auto duplicate_taxa = 0;
@@ -826,7 +826,7 @@ void load_parted_msa(RaxmlInstance& instance)
   instance.tip_id_map = instance.parted_msa->taxon_id_map();
 }
 
-void prepare_tree(const RaxmlInstance& instance, Tree& tree)
+void prepare_tree(const RaxmlInstance& instance, AbstractTree& tree)
 {
   /* fix missing branch lengths */
   tree.fix_missing_brlens();
@@ -836,9 +836,9 @@ void prepare_tree(const RaxmlInstance& instance, Tree& tree)
   tree.reset_tip_ids(instance.tip_id_map);
 }
 
-Tree generate_tree(const RaxmlInstance& instance, StartingTree type)
+AbstractTree generate_tree(const RaxmlInstance& instance, StartingTree type)
 {
-  Tree tree;
+  AbstractTree tree;
 
   const auto& opts = instance.opts;
   const auto& parted_msa = *instance.parted_msa;
@@ -868,9 +868,9 @@ Tree generate_tree(const RaxmlInstance& instance, StartingTree type)
                 << " taxa" << endl;
 
       if (instance.constraint_tree.empty())
-        tree = Tree::buildRandom(parted_msa.taxon_names(), tree_rand_seed);
+        tree = AbstractTree::buildRandom(parted_msa.taxon_names(), tree_rand_seed);
       else
-        tree = Tree::buildRandomConstrained(parted_msa.taxon_names(), tree_rand_seed,
+        tree = AbstractTree::buildRandomConstrained(parted_msa.taxon_names(), tree_rand_seed,
                                             instance.constraint_tree);
 
       break;
@@ -887,7 +887,7 @@ Tree generate_tree(const RaxmlInstance& instance, StartingTree type)
 
       const PartitionedMSA& pars_msa = instance.parted_msa_parsimony ?
                                     *instance.parted_msa_parsimony.get() : *instance.parted_msa;
-      tree = Tree::buildParsimony(pars_msa, tree_rand_seed, attrs, &score);
+      tree = AbstractTree::buildParsimony(pars_msa, tree_rand_seed, attrs, &score);
 
       LOG_DEBUG << "Parsimony score of the starting tree: " << score << endl;
 
@@ -912,7 +912,7 @@ void load_start_trees(RaxmlInstance& instance, CheckpointManager& cm)
   size_t i = 0;
   while (ts.peek() != EOF)
   {
-    Tree tree;
+    AbstractTree tree;
     ts >> tree;
     i++;
 
@@ -992,7 +992,7 @@ void load_constraint(RaxmlInstance& instance)
       throw runtime_error("Constraint tree file not found: " + opts.constraint_tree_file);
 
     NewickStream nw_cons(instance.opts.constraint_tree_file, std::ios::in);
-    Tree& cons_tree = instance.constraint_tree;
+    AbstractTree& cons_tree = instance.constraint_tree;
     nw_cons >> cons_tree;
 
     LOG_INFO_TS << "Loaded " <<
@@ -1316,13 +1316,13 @@ void init_ancestral(RaxmlInstance& instance)
   if (instance.opts.command == Command::ancestral)
   {
     const auto& parted_msa = *instance.parted_msa;
-    const Tree& tree = instance.start_trees.at(0);
+    const AbstractTree& tree = instance.start_trees.at(0);
 
     instance.ancestral_states = make_shared<AncestralStates>(tree.num_inner(), parted_msa);
   }
 }
 
-void reroot_tree_with_outgroup(const Options& opts, Tree& tree, bool add_root_node)
+void reroot_tree_with_outgroup(const Options& opts, AbstractTree& tree, bool add_root_node)
 {
   if (!opts.outgroup_taxa.empty())
   {
@@ -1340,14 +1340,14 @@ void reroot_tree_with_outgroup(const Options& opts, Tree& tree, bool add_root_no
   }
 }
 
-void postprocess_tree(const Options& opts, Tree& tree)
+void postprocess_tree(const Options& opts, AbstractTree& tree)
 {
   reroot_tree_with_outgroup(opts, tree, true);
   // TODO: collapse short branches
   // TODO: regraft previously removed duplicate seqs etc.
 }
 
-void draw_bootstrap_support(RaxmlInstance& instance, Tree& ref_tree, const TreeCollection& bs_trees)
+void draw_bootstrap_support(RaxmlInstance& instance, AbstractTree& ref_tree, const TreeCollection& bs_trees)
 {
   reroot_tree_with_outgroup(instance.opts, ref_tree, false);
 
@@ -1369,7 +1369,7 @@ void draw_bootstrap_support(RaxmlInstance& instance, Tree& ref_tree, const TreeC
       else
         assert(0);
 
-      Tree tree = ref_tree;
+      AbstractTree tree = ref_tree;
       for (auto bs: bs_trees)
       {
         tree.topology(bs.second);
@@ -1408,7 +1408,7 @@ bool check_bootstop(const RaxmlInstance& instance, const TreeCollection& bs_tree
 
   assert(!instance.random_tree.empty());
 
-  Tree bs_tree = instance.random_tree;
+  AbstractTree bs_tree = instance.random_tree;
   size_t bs_num = 0;
   bool converged = false;
   for (auto it: bs_trees)
@@ -1446,7 +1446,7 @@ bool check_bootstop(const RaxmlInstance& instance, const TreeCollection& bs_tree
   return converged;
 }
 
-TreeCollection read_newick_trees(Tree& ref_tree,
+TreeCollection read_newick_trees(AbstractTree& ref_tree,
                                  const std::string& fname, const std::string& tree_kind)
 {
   NameIdMap ref_tip_ids;
@@ -1464,7 +1464,7 @@ TreeCollection read_newick_trees(Tree& ref_tree,
 
   while (boots.peek() != EOF)
   {
-    Tree tree;
+    AbstractTree tree;
     boots >> tree;
 
     if (bs_trees.empty())
@@ -1508,7 +1508,7 @@ TreeCollection read_newick_trees(Tree& ref_tree,
   return bs_trees;
 }
 
-TreeCollection read_bootstrap_trees(const RaxmlInstance& instance, Tree& ref_tree)
+TreeCollection read_bootstrap_trees(const RaxmlInstance& instance, AbstractTree& ref_tree)
 {
   auto bs_trees = read_newick_trees(ref_tree, instance.opts.bootstrap_trees_file(), "bootstrap");
 
@@ -1533,7 +1533,7 @@ void read_multiple_tree_files(RaxmlInstance& instance)
   for (const auto& fname: fname_list)
   {
     auto topos = read_newick_trees(instance.random_tree, fname, "input");
-    Tree ref_tree = instance.random_tree;
+    AbstractTree ref_tree = instance.random_tree;
     for (const auto& t: topos)
     {
       ref_tree.topology(t.second);
@@ -1558,7 +1558,7 @@ void command_support(RaxmlInstance& instance)
   if (!sysutil_file_exists(opts.tree_file))
     throw runtime_error("File not found: " + opts.tree_file);
 
-  Tree ref_tree;
+  AbstractTree ref_tree;
   NewickStream refs(opts.tree_file, std::ios::in);
   refs >> ref_tree;
 
@@ -1618,7 +1618,7 @@ void command_bsmsa(RaxmlInstance& instance, const Checkpoint& checkp)
   generate_bootstraps(instance, checkp);
 }
 
-void check_terrace(const RaxmlInstance& instance, const Tree& tree)
+void check_terrace(const RaxmlInstance& instance, const AbstractTree& tree)
 {
 #ifdef _RAXML_TERRAPHAST
   const auto& parted_msa = *instance.parted_msa;
@@ -1687,7 +1687,7 @@ void save_ml_trees(const Options& opts, const Checkpoint& checkp)
   NewickStream nw(opts.ml_trees_file(), std::ios::out);
   for (auto topol: checkp.ml_trees)
   {
-    Tree ml_tree = checkp.tree;
+    AbstractTree ml_tree = checkp.tree;
     ml_tree.topology(topol.second);
     postprocess_tree(opts, ml_tree);
     nw << ml_tree;
@@ -1753,7 +1753,7 @@ void print_final_output(const RaxmlInstance& instance, const Checkpoint& checkp)
 
     print_ic_scores(instance, best_loglh);
 
-    Tree best_tree = checkp.tree;
+    AbstractTree best_tree = checkp.tree;
 
     best_tree.topology(best->second);
 
@@ -1862,7 +1862,7 @@ void print_final_output(const RaxmlInstance& instance, const Checkpoint& checkp)
 
       for (auto topol: checkp.bs_trees)
       {
-        Tree bs_tree = checkp.tree;
+        AbstractTree bs_tree = checkp.tree;
         bs_tree.topology(topol.second);
         postprocess_tree(opts, bs_tree);
         nw << bs_tree;
@@ -2280,7 +2280,7 @@ void master_main(RaxmlInstance& instance, CheckpointManager& cm)
     if (opts.command == Command::all)
     {
       auto& checkp = cm.checkpoint();
-      Tree tree = checkp.tree;
+      AbstractTree tree = checkp.tree;
       tree.topology(checkp.ml_trees.best_topology());
 
       draw_bootstrap_support(instance, tree, checkp.bs_trees);
@@ -2471,7 +2471,7 @@ int internal_main(int argc, char** argv, void* comm)
         if (!sysutil_file_exists(opts.tree_file))
           throw runtime_error("File not found: " + opts.tree_file);
         instance.start_tree_stream.reset(new NewickStream(opts.tree_file, std::ios::in));
-        Tree tree = generate_tree(instance, StartingTree::user);
+        AbstractTree tree = generate_tree(instance, StartingTree::user);
         check_terrace(instance, tree);
         break;
       }
@@ -2488,7 +2488,7 @@ int internal_main(int argc, char** argv, void* comm)
           if (!sysutil_file_exists(opts.tree_file))
             throw runtime_error("File not found: " + opts.tree_file);
           instance.start_tree_stream.reset(new NewickStream(opts.tree_file, std::ios::in));
-          Tree tree = generate_tree(instance, StartingTree::user);
+          AbstractTree tree = generate_tree(instance, StartingTree::user);
         }
         if (opts.command == Command::parse)
           print_resources(instance);

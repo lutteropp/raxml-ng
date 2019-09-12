@@ -15,7 +15,7 @@ BootstopCheck::~BootstopCheck ()
     pllmod_utree_split_hashtable_destroy(_pll_splits_hash);
 }
 
-void BootstopCheck::add_bootstrap_tree(const Tree& tree)
+void BootstopCheck::add_bootstrap_tree(const AbstractTree& tree)
 {
   if (_num_bs_trees == _max_bs_trees)
   {

@@ -1,8 +1,8 @@
 #ifndef RAXML_ANCESTRALSTATES_HPP_
 #define RAXML_ANCESTRALSTATES_HPP_
 
+#include "AbstractTree.hpp"
 #include "common.h"
-#include "Tree.hpp"
 #include "PartitionedMSA.hpp"
 #include "loadbalance/PartitionAssignment.hpp"
 
@@ -10,7 +10,7 @@ typedef std::vector<doubleVector> PartitionAncestralProbs;
 
 struct AncestralStates
 {
-  Tree tree;
+  AbstractTree tree;
   size_t num_nodes;
   size_t num_states;
   std::vector<size_t> part_num_sites;

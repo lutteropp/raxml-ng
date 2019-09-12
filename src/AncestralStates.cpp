@@ -114,7 +114,7 @@ void assign_tree(AncestralStates& ancestral, const pllmod_ancestral_t& pll_ances
 
   }
 
-  ancestral.tree = Tree(*pll_ancestral.tree);
+  ancestral.tree = AbstractTree(*pll_ancestral.tree);
   ancestral.node_names.clear();
   for (size_t i = 0; i < pll_ancestral.node_count; ++i)
     ancestral.node_names.push_back(pll_ancestral.nodes[i]->label);

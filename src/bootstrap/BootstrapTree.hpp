@@ -6,7 +6,7 @@
 class BootstrapTree : public SupportTree
 {
 public:
-  BootstrapTree (const Tree& tree);
+  BootstrapTree (const AbstractTree& tree);
 
   virtual
   ~BootstrapTree ();

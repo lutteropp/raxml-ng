@@ -20,7 +20,7 @@ char * newick_print_cb(const pll_unode_t * node)
   return newick;
 }
 
-std::string to_newick_string_rooted(const Tree& tree, double root_brlen)
+std::string to_newick_string_rooted(const AbstractTree& tree, double root_brlen)
 {
   char * newick_str = pll_utree_export_newick_rooted(&tree.pll_utree_root(),
                                                      root_brlen);
@@ -52,13 +52,13 @@ NewickStream& operator<<(NewickStream& stream, const pll_utree_t& tree)
   return stream;
 }
 
-NewickStream& operator<<(NewickStream& stream, const Tree& tree)
+NewickStream& operator<<(NewickStream& stream, const AbstractTree& tree)
 {
   stream << tree.pll_utree_root();
   return stream;
 }
 
-NewickStream& operator>>(NewickStream& stream, Tree& tree)
+NewickStream& operator>>(NewickStream& stream, AbstractTree& tree)
 {
   string newick_str;
 
@@ -77,7 +77,7 @@ NewickStream& operator>>(NewickStream& stream, Tree& tree)
 
     assert(utree);
 
-    tree = Tree(*utree);
+    tree = AbstractTree(*utree);
 
     pll_utree_destroy(utree, nullptr);
   }

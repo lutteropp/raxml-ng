@@ -2,8 +2,8 @@
 #define RAXML_CHECKPOINT_HPP_
 
 #include "common.h"
-#include "TreeInfo.hpp"
 #include "io/binary_io.hpp"
+#include "TreeInfo.hpp"
 
 constexpr int RAXML_CKP_VERSION = 1;
 constexpr int RAXML_CKP_MIN_SUPPORTED_VERSION = 1;
@@ -51,7 +51,7 @@ struct Checkpoint
 
   SearchState search_state;
 
-  Tree tree;
+  AbstractTree tree;
   ModelMap models;
   ModelMap best_models;  /* model parameters for the best-scoring ML tree */
 

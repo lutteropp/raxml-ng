@@ -21,7 +21,7 @@ char * support_fmt_prop(double support)
 }
 
 
-SupportTree::SupportTree(const Tree& tree) : Tree(tree), _num_bs_trees(0)
+SupportTree::SupportTree(const AbstractTree& tree) : AbstractTree(tree), _num_bs_trees(0)
 {
   _pll_splits_hash = nullptr;
 }
@@ -55,12 +55,12 @@ void SupportTree::add_splits_to_hashtable(const PllSplitSharedPtr& splits,
 }
 
 
-void SupportTree::add_tree(const Tree& tree)
+void SupportTree::add_tree(const AbstractTree& tree)
 {
   add_tree(tree.pll_utree_root());
 }
 
-void SupportTree::add_replicate_tree(const Tree& tree)
+void SupportTree::add_replicate_tree(const AbstractTree& tree)
 {
   if (tree.num_tips() != _num_tips)
     throw runtime_error("Incompatible tree!");

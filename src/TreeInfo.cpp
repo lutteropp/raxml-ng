@@ -1,18 +1,19 @@
+#include "TreeInfo.hpp"
+
 #include <algorithm>
 
-#include "TreeInfo.hpp"
 #include "ParallelContext.hpp"
 
 using namespace std;
 
-TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
+TreeInfo::TreeInfo (const Options &opts, const AbstractTree& tree, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign)
 {
   init(opts, tree, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
 }
 
-TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
+TreeInfo::TreeInfo (const Options &opts, const AbstractTree& tree, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights)
@@ -20,7 +21,7 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
   init(opts, tree, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
-void TreeInfo::init(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
+void TreeInfo::init(const Options &opts, const AbstractTree& tree, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights)
@@ -139,12 +140,12 @@ void TreeInfo::assert_lh_improvement(double old_lh, double new_lh, const std::st
 }
 
 
-Tree TreeInfo::tree() const
+AbstractTree TreeInfo::tree() const
 {
   if (!_pll_treeinfo)
-    return Tree();
+    return AbstractTree();
 
-  Tree tree(*_pll_treeinfo->tree);
+  AbstractTree tree(*_pll_treeinfo->tree);
 
   if (_pll_treeinfo->brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED)
   {
@@ -164,10 +165,10 @@ Tree TreeInfo::tree() const
   return tree;
 }
 
-Tree TreeInfo::tree(size_t partition_id) const
+AbstractTree TreeInfo::tree(size_t partition_id) const
 {
   if (!_pll_treeinfo)
-    return Tree();
+    return AbstractTree();
 
   if (partition_id >= _pll_treeinfo->partition_count)
     throw out_of_range("Partition ID out of range");
@@ -180,10 +181,10 @@ Tree TreeInfo::tree(size_t partition_id) const
     libpll_check_error("treeinfo: cannot get partition tree");
   }
 
-  return Tree(pll_utree);
+  return AbstractTree(pll_utree);
 }
 
-void TreeInfo::tree(const Tree& tree)
+void TreeInfo::tree(const AbstractTree& tree)
 {
   _pll_treeinfo->root = pll_utree_graph_clone(&tree.pll_utree_root());
 }
@@ -398,7 +399,7 @@ double TreeInfo::spr_round(spr_round_params& params)
   return loglh;
 }
 
-void TreeInfo::set_topology_constraint(const Tree& cons_tree)
+void TreeInfo::set_topology_constraint(const AbstractTree& cons_tree)
 {
   if (!cons_tree.empty())
   {

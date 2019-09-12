@@ -2,7 +2,7 @@
 
 #include "../common.h"
 
-BootstrapTree::BootstrapTree (const Tree& tree) : SupportTree(tree)
+BootstrapTree::BootstrapTree (const AbstractTree& tree) : SupportTree(tree)
 {
   assert(num_splits() > 0);
   _node_split_map.resize(num_splits());
