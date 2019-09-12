@@ -32,7 +32,7 @@ endif()
 
 if (BUILD_AS_LIBRARY)
   message(STATUS "RAxML-NG will be built as a library.")
-  add_library(raxml_module MODULE ${RAXML_SOURCES})
+  add_library(raxml_module STATIC ${RAXML_SOURCES})
 else()
   add_executable(raxml_module ${RAXML_SOURCES})
 endif()
