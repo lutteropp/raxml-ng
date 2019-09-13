@@ -24,6 +24,10 @@ struct spr_round_params
   }
 };
 
+using OptBrlenFunc = std::function<double(pllmod_treeinfo_t *, double, double, double, int, int, int)>;
+using SprRoundFunc = std::function<double(pllmod_treeinfo_t *, unsigned int, unsigned int, unsigned int, pll_bool_t, int, double, double, int, double, cutoff_info_t *, double)>;
+using AncestralFunc = std::function<pllmod_ancestral_t*(pllmod_treeinfo_t *)>;
+
 class TreeInfo
 {
 public:
@@ -35,18 +39,22 @@ public:
 
   TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
-              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign);
+              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
+			  OptBrlenFunc opt_brlen, SprRoundFunc spr_round, AncestralFunc computeAncestral);
   TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
               const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
-              const std::vector<uintVector>& site_weights);
-  TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo,
-		      const PartitionedMSA& parted_msa,
-              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign);
+              const std::vector<uintVector>& site_weights,
+			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
   TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
               const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
-              const std::vector<uintVector>& site_weights);
+			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
+  TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo,
+		      const PartitionedMSA& parted_msa,
+              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
+              const std::vector<uintVector>& site_weights,
+			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
 
   virtual
   ~TreeInfo ();
@@ -77,27 +85,6 @@ public:
   double spr_round(spr_round_params& params);
   void compute_ancestral(const AncestralStatesSharedPtr& ancestral,
                          const PartitionAssignment& part_assign);
-
-  double (*opt_brlen_function)(pllmod_treeinfo_t *, // treeinfo
-                                          double, // min_brlen
-                                          double, // max_brlen
-                                          double, // lh_epsilon
-                                          int, // max_iters
-                                          int, // opt_method
-                                          int); // radius
-  double (*spr_round_function)(pllmod_treeinfo_t *, // treeinfo
-                                            unsigned int, // radius_min
-                                            unsigned int, // radius_max
-                                            unsigned int, // ntopol_keep
-                                            pll_bool_t, // thorough
-                                            int, // brlen_opt_method
-                                            double, // bl_min
-                                            double, // bl_max
-                                            int, // smoothings
-                                            double, // epsilon
-                                            cutoff_info_t *, // cutoff_info
-                                            double); // subtree_cutoff
-  pllmod_ancestral_t * (*compute_ancestral_function)(pllmod_treeinfo_t *); // treeinfo
 private:
   pllmod_treeinfo_t * _pll_treeinfo;
   IDSet _parts_master;
@@ -107,11 +94,15 @@ private:
   bool _check_lh_impr;
   doubleVector _partition_contributions;
 
+  OptBrlenFunc opt_brlen_function;
+  SprRoundFunc spr_round_function;
+  AncestralFunc compute_ancestral_function;
+
   pllmod_treeinfo_t* create_base_treeinfo(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa);
 
   void init(const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
-            const std::vector<uintVector>& site_weights);
+            const std::vector<uintVector>& site_weights, OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
 
   void assert_lh_improvement(double old_lh, double new_lh, const std::string& where = "");
 };
