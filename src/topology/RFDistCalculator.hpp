@@ -1,7 +1,7 @@
 #ifndef RAXML_TOPOLOGY_RFDISTCALCULATOR_HPP_
 #define RAXML_TOPOLOGY_RFDISTCALCULATOR_HPP_
 
-#include "../AbstractTree.hpp"
+#include "../Tree.hpp"
 
 typedef std::vector<bool> bitVector;
 
@@ -34,7 +34,7 @@ private:
 
   void calc_rfdist(const TreeList& trees);
   void calc_rfdist_lowmem(const TreeList& trees);
-  void add_tree_splits(size_t tree_idx, const AbstractTree& tree,
+  void add_tree_splits(size_t tree_idx, const Tree& tree,
                        bitv_hashtable_t * splits_hash);
   double maxrf() const;
 };

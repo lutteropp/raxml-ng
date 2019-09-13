@@ -1,8 +1,8 @@
 #ifndef RAXML_TREEINFO_HPP_
 #define RAXML_TREEINFO_HPP_
 
-#include "AbstractTree.hpp"
 #include "common.h"
+#include "Tree.hpp"
 #include "Options.hpp"
 #include "AncestralStates.hpp"
 #include "loadbalance/PartitionAssignment.hpp"
@@ -27,9 +27,9 @@ struct spr_round_params
 class TreeInfo
 {
 public:
-  TreeInfo (const Options &opts, const AbstractTree& tree, const PartitionedMSA& parted_msa,
+  TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign);
-  TreeInfo (const Options &opts, const AbstractTree& tree, const PartitionedMSA& parted_msa,
+  TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
             const std::vector<uintVector>& site_weights);
   virtual
@@ -38,9 +38,9 @@ public:
   const pllmod_treeinfo_t& pll_treeinfo() const { return *_pll_treeinfo; }
   const pll_unode_t& pll_utree_root() const { assert(_pll_treeinfo); return *_pll_treeinfo->root; }
 
-  AbstractTree tree() const;
-  AbstractTree tree(size_t partition_id) const;
-  void tree(const AbstractTree& tree);
+  Tree tree() const;
+  Tree tree(size_t partition_id) const;
+  void tree(const Tree& tree);
 
   /* in parallel mode, partition can be share among multiple threads and TreeInfo objects;
    * this method returns list of partition IDs for which this thread is designated as "master"
@@ -49,7 +49,7 @@ public:
 
   void model(size_t partition_id, const Model& model);
 
-  void set_topology_constraint(const AbstractTree& cons_tree);
+  void set_topology_constraint(const Tree& cons_tree);
 
   double loglh(bool incremental = false);
   double optimize_params(int params_to_optimize, double lh_epsilon);
@@ -91,7 +91,7 @@ private:
   bool _check_lh_impr;
   doubleVector _partition_contributions;
 
-  void init(const Options &opts, const AbstractTree& tree, const PartitionedMSA& parted_msa,
+  void init(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
             const std::vector<uintVector>& site_weights);
 

@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "../AbstractTree.hpp"
+#include "../Tree.hpp"
 #include "../AncestralStates.hpp"
 #include "../bootstrap/BootstrapTree.hpp"
 #include "../bootstrap/BootstrapGenerator.hpp"
@@ -131,8 +131,8 @@ public:
 
 NewickStream& operator<<(NewickStream& stream, const pll_unode_t& root);
 NewickStream& operator<<(NewickStream& stream, const pll_utree_t& tree);
-NewickStream& operator<<(NewickStream& stream, const AbstractTree& tree);
-NewickStream& operator>>(NewickStream& stream, AbstractTree& tree);
+NewickStream& operator<<(NewickStream& stream, const Tree& tree);
+NewickStream& operator>>(NewickStream& stream, Tree& tree);
 
 NewickStream& operator<<(NewickStream& stream, const AncestralStates& ancestral);
 //NewickStream& operator>>(NewickStream& stream, BootstrapTree& tree);
@@ -162,6 +162,6 @@ RaxmlPartitionStream& operator<<(RaxmlPartitionStream& stream, const Partitioned
 AncestralProbStream& operator<<(AncestralProbStream& stream, const AncestralStates& ancestral);
 AncestralStateStream& operator<<(AncestralStateStream& stream, const AncestralStates& ancestral);
 
-std::string to_newick_string_rooted(const AbstractTree& tree, double root_brlen = 0.0);
+std::string to_newick_string_rooted(const Tree& tree, double root_brlen = 0.0);
 
 #endif /* RAXML_FILE_IO_HPP_ */

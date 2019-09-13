@@ -6,12 +6,12 @@
 #include <terraces/errors.hpp>
 
 class PartitionedMSA;
-class AbstractTree;
+class Tree;
 
 class TerraceWrapper
 {
 public:
-  TerraceWrapper (const PartitionedMSA& part_msa, const AbstractTree& tree);
+  TerraceWrapper (const PartitionedMSA& part_msa, const Tree& tree);
 
   std::uint64_t terrace_size();
   void print_terrace_newick(std::ostream& output);

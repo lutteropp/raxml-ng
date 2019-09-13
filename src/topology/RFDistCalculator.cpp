@@ -23,7 +23,7 @@ RFDistCalculator::~RFDistCalculator ()
 {
 }
 
-void RFDistCalculator::add_tree_splits(size_t tree_idx, const AbstractTree& tree,
+void RFDistCalculator::add_tree_splits(size_t tree_idx, const Tree& tree,
                                        bitv_hashtable_t * splits_hash)
 {
   assert(splits_hash);

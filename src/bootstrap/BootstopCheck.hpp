@@ -2,7 +2,7 @@
 #define RAXML_BOOTSTRAP_BOOTSTOPCHECK_HPP_
 
 #include <bitset>
-#include "../AbstractTree.hpp"
+#include "../Tree.hpp"
 
 typedef std::vector<bool> bitVector;
 typedef std::vector<bitv_hash_entry_t *> splitEntryVector;
@@ -29,7 +29,7 @@ protected:
   virtual ~BootstopCheck ();
 
 public:
-  void add_bootstrap_tree(const AbstractTree& tree);
+  void add_bootstrap_tree(const Tree& tree);
 
   bool converged(unsigned long random_seed = 0);
 

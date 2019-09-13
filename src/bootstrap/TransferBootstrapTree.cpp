@@ -1,6 +1,6 @@
 #include "TransferBootstrapTree.hpp"
 
-TransferBootstrapTree::TransferBootstrapTree(const AbstractTree& tree, bool naive) :
+TransferBootstrapTree::TransferBootstrapTree(const Tree& tree, bool naive) :
    SupportTree (tree), _split_info(nullptr), _naive_method(naive)
 {
   assert(num_splits() > 0);

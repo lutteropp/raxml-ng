@@ -1,20 +1,20 @@
 #ifndef SRC_BOOTSTRAP_SUPPORTTREE_HPP_
 #define SRC_BOOTSTRAP_SUPPORTTREE_HPP_
 
-#include "../AbstractTree.hpp"
+#include "../Tree.hpp"
 
 typedef std::shared_ptr<pll_split_t> PllSplitSharedPtr;
 
 
-class SupportTree : public AbstractTree
+class SupportTree : public Tree
 {
 public:
-  SupportTree (const AbstractTree& tree = AbstractTree());
+  SupportTree (const Tree& tree = Tree());
 
   virtual
   ~SupportTree ();
 
-  virtual void add_replicate_tree(const AbstractTree& tree);
+  virtual void add_replicate_tree(const Tree& tree);
 
   void draw_support(bool support_in_pct = true);
 
@@ -23,7 +23,7 @@ protected:
                                              pll_unode_t ** node_split_map);
   void add_splits_to_hashtable(const PllSplitSharedPtr& splits,
                                const doubleVector& support, bool update_only);
-  void add_tree(const AbstractTree& tree);
+  void add_tree(const Tree& tree);
   virtual void add_tree(const pll_unode_t& root) = 0;
 
 

@@ -38,7 +38,7 @@ void set(terraces::bitmatrix& bm, terraces::index_map indices, bool val)
       bm.set(it.second, col, val);
 }
 
-TerraceWrapper::TerraceWrapper (const PartitionedMSA& parted_msa, const AbstractTree& tree) :
+TerraceWrapper::TerraceWrapper (const PartitionedMSA& parted_msa, const Tree& tree) :
     _bm(parted_msa.taxon_count(), parted_msa.part_count())
 {
   /* init index<->name maps */

@@ -2,7 +2,7 @@
 #define RAXML_BINARY_IO_HPP_
 
 #include "../Model.hpp"
-#include "../AbstractTree.hpp"
+#include "../Tree.hpp"
 
 enum class ModelBinaryFmt
 {
