@@ -32,6 +32,22 @@ public:
   TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
             const std::vector<uintVector>& site_weights);
+
+  TreeInfo (const Options &opts, pllmod_treeinfo_t* incomplete_treeinfo,
+		      const std::vector<doubleVector>& partition_brlens, const PartitionedMSA& parted_msa,
+              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign);
+  TreeInfo (const Options &opts, pllmod_treeinfo_t* incomplete_treeinfo,
+		      const std::vector<doubleVector>& partition_brlens, const PartitionedMSA& parted_msa,
+              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
+              const std::vector<uintVector>& site_weights);
+  TreeInfo (const Options &opts, pllmod_treeinfo_t* incomplete_treeinfo,
+		      const PartitionedMSA& parted_msa,
+              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign);
+  TreeInfo (const Options &opts, pllmod_treeinfo_t* incomplete_treeinfo,
+		      const PartitionedMSA& parted_msa,
+              const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
+              const std::vector<uintVector>& site_weights);
+
   virtual
   ~TreeInfo ();
 
@@ -92,6 +108,10 @@ private:
   doubleVector _partition_contributions;
 
   void init(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
+            const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
+            const std::vector<uintVector>& site_weights);
+  void init(const Options &opts, pllmod_treeinfo_t* incomplete_treeinfo,
+		    const std::vector<doubleVector>& partition_brlens, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
             const std::vector<uintVector>& site_weights);
 
