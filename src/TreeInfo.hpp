@@ -94,9 +94,9 @@ private:
   bool _check_lh_impr;
   doubleVector _partition_contributions;
 
-  OptBrlenFunc opt_brlen_function;
-  SprRoundFunc spr_round_function;
-  AncestralFunc compute_ancestral_function;
+  OptBrlenFunc _opt_brlen_function;
+  SprRoundFunc _spr_round_function;
+  AncestralFunc _compute_ancestral_function;
 
   pllmod_treeinfo_t* create_base_treeinfo(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa);
 

@@ -71,9 +71,9 @@ void TreeInfo::init(const Options &opts, const std::vector<doubleVector>& partit
                     const std::vector<uintVector>& site_weights,
 					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f)
 {
-  opt_brlen_function = opt_brlen_f;
-  spr_round_function = spr_round_f;
-  compute_ancestral_function = compute_ancestral_f;
+  _opt_brlen_function = opt_brlen_f;
+  _spr_round_function = spr_round_f;
+  _compute_ancestral_function = compute_ancestral_f;
   _brlen_min = opts.brlen_min;
   _brlen_max = opts.brlen_max;
   _brlen_opt_method = opts.brlen_opt_method;
@@ -258,7 +258,7 @@ double TreeInfo::optimize_branches(double lh_epsilon, double brlen_smooth_factor
   if (_pll_treeinfo->params_to_optimize[0] & PLLMOD_OPT_PARAM_BRANCHES_ITERATIVE)
   {
     int max_iters = brlen_smooth_factor * RAXML_BRLEN_SMOOTHINGS;
-    new_loglh = -1 * opt_brlen_function(_pll_treeinfo,
+    new_loglh = -1 * _opt_brlen_function(_pll_treeinfo,
                                                     _brlen_min,
                                                     _brlen_max,
                                                     lh_epsilon,
@@ -425,7 +425,7 @@ double TreeInfo::optimize_params(int params_to_optimize, double lh_epsilon)
 
 double TreeInfo::spr_round(spr_round_params& params)
 {
-  double loglh = spr_round_function(_pll_treeinfo, params.radius_min, params.radius_max,
+  double loglh = _spr_round_function(_pll_treeinfo, params.radius_min, params.radius_max,
                                params.ntopol_keep, params.thorough, _brlen_opt_method,
                                _brlen_min, _brlen_max, RAXML_BRLEN_SMOOTHINGS,
                                0.1,
@@ -452,7 +452,7 @@ void TreeInfo::set_topology_constraint(const Tree& cons_tree)
 void TreeInfo::compute_ancestral(const AncestralStatesSharedPtr& ancestral,
                                  const PartitionAssignment& part_assign)
 {
-  pllmod_ancestral_t * pll_ancestral = compute_ancestral_function(_pll_treeinfo);
+  pllmod_ancestral_t * pll_ancestral = _compute_ancestral_function(_pll_treeinfo);
 
   if (!pll_ancestral)
     libpll_check_error("Unable to compute ancestral states", true);
