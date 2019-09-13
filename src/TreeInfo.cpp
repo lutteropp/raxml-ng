@@ -9,7 +9,8 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign)
 {
-  init(opts, tree, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
+  pllmod_treeinfo_t* base_tinfo = create_base_treeinfo(opts, tree, parted_msa);
+  init(opts, tree.partition_brlens(), base_tinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
 }
 
 TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
@@ -17,44 +18,51 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights)
 {
-  init(opts, tree, parted_msa, tip_msa_idmap, part_assign, site_weights);
+  pllmod_treeinfo_t* base_tinfo = create_base_treeinfo(opts, tree, parted_msa);
+  init(opts, tree.partition_brlens(), base_tinfo, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
-TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* fake_treeinfo,
-		            const std::vector<doubleVector>& partition_brlens, const PartitionedMSA& parted_msa,
+TreeInfo::TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign)
 {
-  init(opts, fake_treeinfo, partition_brlens, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
+  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
 }
 
-TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* fake_treeinfo,
-		            const std::vector<doubleVector>& partition_brlens, const PartitionedMSA& parted_msa,
+TreeInfo::TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights)
 {
-  init(opts, fake_treeinfo, partition_brlens, parted_msa, tip_msa_idmap, part_assign, site_weights);
+  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
-TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* fake_treeinfo,
-		            const PartitionedMSA& parted_msa,
+TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign)
 {
-  init(opts, fake_treeinfo, std::vector<doubleVector>(), parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
+  init(opts, std::vector<doubleVector>(), base_treeinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
 }
 
-TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* fake_treeinfo,
-		            const PartitionedMSA& parted_msa,
+TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights)
 {
-  init(opts, fake_treeinfo, std::vector<doubleVector>(), parted_msa, tip_msa_idmap, part_assign, site_weights);
+  init(opts, std::vector<doubleVector>(), base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
-void TreeInfo::init(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
+
+pllmod_treeinfo_t* TreeInfo::create_base_treeinfo(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa) {
+	pllmod_treeinfo_t* base_tinfo = pllmod_treeinfo_create(pll_utree_graph_clone(&tree.pll_utree_root()),
+	                                         tree.num_tips(),
+	                                         parted_msa.part_count(), opts.brlen_linkage);
+	libpll_check_error("ERROR creating treeinfo structure");
+	assert(base_tinfo);
+	return base_tinfo;
+}
+
+void TreeInfo::init(const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights)
@@ -70,98 +78,7 @@ void TreeInfo::init(const Options &opts, const Tree& tree, const PartitionedMSA&
   _partition_contributions.resize(parted_msa.part_count());
   double total_weight = 0;
 
-  _pll_treeinfo = pllmod_treeinfo_create(pll_utree_graph_clone(&tree.pll_utree_root()),
-                                         tree.num_tips(),
-                                         parted_msa.part_count(), opts.brlen_linkage);
-
-  libpll_check_error("ERROR creating treeinfo structure");
-  assert(_pll_treeinfo);
-
-  if (ParallelContext::num_procs() > 1)
-  {
-    pllmod_treeinfo_set_parallel_context(_pll_treeinfo, (void *) nullptr,
-                                         ParallelContext::parallel_reduce_cb);
-  }
-
-  // init partitions
-  int optimize_branches = opts.optimize_brlen ? PLLMOD_OPT_PARAM_BRANCHES_ITERATIVE : 0;
-
-  for (size_t p = 0; p < parted_msa.part_count(); ++p)
-  {
-    const PartitionInfo& pinfo = parted_msa.part_info(p);
-    const auto& weights = site_weights.empty() ? pinfo.msa().weights() : site_weights.at(p);
-    int params_to_optimize = opts.optimize_model ? pinfo.model().params_to_optimize() : 0;
-    params_to_optimize |= optimize_branches;
-
-    _partition_contributions[p] = std::accumulate(weights.begin(), weights.end(), 0);
-    total_weight += _partition_contributions[p];
-
-    PartitionAssignment::const_iterator part_range = part_assign.find(p);
-    if (part_range != part_assign.end())
-    {
-      /* create and init PLL partition structure */
-      pll_partition_t * partition = create_pll_partition(opts, pinfo, tip_msa_idmap,
-                                                         *part_range, weights);
-
-      int retval = pllmod_treeinfo_init_partition(_pll_treeinfo, p, partition,
-                                                  params_to_optimize,
-                                                  pinfo.model().gamma_mode(),
-                                                  pinfo.model().alpha(),
-                                                  pinfo.model().ratecat_submodels().data(),
-                                                  pinfo.model().submodel(0).rate_sym().data());
-
-      if (!retval)
-      {
-        assert(pll_errno);
-        libpll_check_error("ERROR adding treeinfo partition");
-      }
-
-      // set per-partition branch lengths or scalers
-      if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_SCALED)
-      {
-        assert (_pll_treeinfo->brlen_scalers);
-        _pll_treeinfo->brlen_scalers[p] = pinfo.model().brlen_scaler();
-      }
-      else if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED && !tree.partition_brlens().empty())
-      {
-        assert(_pll_treeinfo->branch_lengths[p]);
-        memcpy(_pll_treeinfo->branch_lengths[p], tree.partition_brlens(p).data(),
-               tree.num_branches() * sizeof(double));
-      }
-
-      if (part_range->master())
-        _parts_master.insert(p);
-    }
-    else
-    {
-      // this partition will be processed by other threads, but we still need to know
-      // which parameters to optimize
-      _pll_treeinfo->params_to_optimize[p] = params_to_optimize;
-    }
-  }
-
-  // finalize partition contribution computation
-  for (auto& c: _partition_contributions)
-    c /= total_weight;
-}
-
-void TreeInfo::init(const Options &opts, pllmod_treeinfo_t* fake_treeinfo, const std::vector<doubleVector>& partition_brlens, const PartitionedMSA& parted_msa,
-                    const IDVector& tip_msa_idmap,
-                    const PartitionAssignment& part_assign,
-                    const std::vector<uintVector>& site_weights)
-{
-  opt_brlen_function = pllmod_algo_opt_brlen_treeinfo;
-  spr_round_function = pllmod_algo_spr_round;
-  compute_ancestral_function = pllmod_treeinfo_compute_ancestral;
-
-  _brlen_min = opts.brlen_min;
-  _brlen_max = opts.brlen_max;
-  _brlen_opt_method = opts.brlen_opt_method;
-  _check_lh_impr = opts.safety_checks.isset(SafetyCheck::model_lh_impr);
-  _partition_contributions.resize(parted_msa.part_count());
-  double total_weight = 0;
-
-  _pll_treeinfo = fake_treeinfo;
+  _pll_treeinfo = base_treeinfo;
   assert(_pll_treeinfo);
 
   if (ParallelContext::num_procs() > 1)
@@ -212,8 +129,8 @@ void TreeInfo::init(const Options &opts, pllmod_treeinfo_t* fake_treeinfo, const
       else if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED && !partition_brlens.empty())
       {
         assert(_pll_treeinfo->branch_lengths[p]);
-        memcpy(_pll_treeinfo->branch_lengths[p], partition_brlens[p].data(),
-        		partition_brlens[p].size() * sizeof(double));
+        memcpy(_pll_treeinfo->branch_lengths[p], partition_brlens.at(p).data(),
+        		partition_brlens.at(p).size() * sizeof(double));
       }
 
       if (part_range->master())
