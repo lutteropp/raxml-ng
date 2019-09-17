@@ -13,23 +13,30 @@
 #include <memory>
 #include <string>
 
-#include "AncestralStates.hpp"
-#include "bootstrap/BootstrapGenerator.hpp"
-#include "bootstrap/SupportTree.hpp"
-#include "Checkpoint.hpp"
-#include "loadbalance/PartitionAssignment.hpp"
+#include "version.h"
+#include "common.h"
 #include "MSA.hpp"
 #include "Options.hpp"
-#include "PartitionedMSA.hpp"
+#include "CommandLineParser.hpp"
+#include "Optimizer.hpp"
+#include "PartitionInfo.hpp"
 #include "PartitionedMSAView.hpp"
-#include "types.hpp"
-#include "Tree.hpp"
+#include "TreeInfo.hpp"
+#include "io/file_io.hpp"
+#include "io/binary_io.hpp"
+#include "ParallelContext.hpp"
+#include "loadbalance/LoadBalancer.hpp"
+#include "bootstrap/BootstrapGenerator.hpp"
+#include "bootstrap/BootstopCheck.hpp"
+#include "bootstrap/TransferBootstrapTree.hpp"
+#include "bootstrap/ConsensusTree.hpp"
+#include "autotune/ResourceEstimator.hpp"
+#include "ICScoreCalculator.hpp"
+#include "topology/RFDistCalculator.hpp"
 
-class BootstopCheckMRE;
-class ConsensusTree;
-class LoadBalancer;
-class NewickStream;
-class RFDistCalculator;
+#ifdef _RAXML_TERRAPHAST
+#include "terraces/TerraceWrapper.hpp"
+#endif
 
 using namespace std;
 
