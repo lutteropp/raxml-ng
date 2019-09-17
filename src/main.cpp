@@ -23,6 +23,8 @@
 
 #include <memory>
 
+#include "main.hpp"
+
 #include "version.h"
 #include "common.h"
 #include "MSA.hpp"
@@ -49,46 +51,6 @@
 #endif
 
 using namespace std;
-
-struct RaxmlInstance
-{
-  Options opts;
-  shared_ptr<PartitionedMSA> parted_msa;
-  unique_ptr<PartitionedMSA> parted_msa_parsimony;
-  TreeList start_trees;
-  BootstrapReplicateList bs_reps;
-  TreeList bs_start_trees;
-  PartitionAssignmentList proc_part_assign;
-  unique_ptr<LoadBalancer> load_balancer;
-  map<BranchSupportMetric, shared_ptr<SupportTree> > support_trees;
-  shared_ptr<ConsensusTree> consens_tree;
-
-  // bootstopping convergence test, only autoMRE is supported for now
-  unique_ptr<BootstopCheckMRE> bootstop_checker;
-
-  // mapping taxon name -> tip_id/clv_id in the tree
-  NameIdMap tip_id_map;
-
-  // mapping tip_id in the tree (array index) -> sequence index in MSA
-  IDVector tip_msa_idmap;
-
- // unique_ptr<TerraceWrapper> terrace_wrapper;
-
-//  unique_ptr<RandomGenerator> starttree_seed_gen;
-//  unique_ptr<RandomGenerator> bootstrap_seed_gen;
-
-  unique_ptr<NewickStream> start_tree_stream;
-
-  /* this is just a dummy random tree used for convenience, e,g, if we need tip labels or
-   * just 'any' valid tree for the alignment at hand */
-  Tree random_tree;
-
-  /* topological constraint */
-  Tree constraint_tree;
-
-  unique_ptr<RFDistCalculator> dist_calculator;
-  AncestralStatesSharedPtr ancestral_states;
-};
 
 void print_banner()
 {
@@ -1382,7 +1344,7 @@ void draw_bootstrap_support(RaxmlInstance& instance, Tree& ref_tree, const TreeC
 }
 
 bool check_bootstop(const RaxmlInstance& instance, const TreeCollection& bs_trees,
-                    bool print = false)
+                    bool print)
 {
   if (!instance.bootstop_checker)
     return false;
