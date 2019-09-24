@@ -10,7 +10,7 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
                     const PartitionAssignment& part_assign)
 {
   pllmod_treeinfo_t* base_tinfo = create_base_treeinfo(opts, tree, parted_msa);
-  init(opts, tree.partition_brlens(), base_tinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>(), pllmod_algo_opt_brlen_treeinfo, pllmod_algo_spr_round, pllmod_treeinfo_compute_ancestral);
+  init(opts, tree.partition_brlens(), base_tinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>());
 }
 
 TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
@@ -19,41 +19,41 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
                     const std::vector<uintVector>& site_weights)
 {
   pllmod_treeinfo_t* base_tinfo = create_base_treeinfo(opts, tree, parted_msa);
-  init(opts, tree.partition_brlens(), base_tinfo, parted_msa, tip_msa_idmap, part_assign, site_weights, pllmod_algo_opt_brlen_treeinfo, pllmod_algo_spr_round, pllmod_treeinfo_compute_ancestral);
+  init(opts, tree.partition_brlens(), base_tinfo, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
 TreeInfo::TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
-					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f)
+					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches)
 {
-  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>(), opt_brlen_f, spr_round_f, compute_ancestral_f);
+  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>(), opt_brlen_f, spr_round_f, compute_ancestral_f, num_tips, num_inner, num_branches);
 }
 
 TreeInfo::TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights,
-					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f)
+					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches)
 {
-  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights, opt_brlen_f, spr_round_f, compute_ancestral_f);
+  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights, opt_brlen_f, spr_round_f, compute_ancestral_f, num_tips, num_inner, num_branches);
 }
 
 TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
-					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f)
+					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches)
 {
-  init(opts, std::vector<doubleVector>(), base_treeinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>(), opt_brlen_f, spr_round_f, compute_ancestral_f);
+  init(opts, std::vector<doubleVector>(), base_treeinfo, parted_msa, tip_msa_idmap, part_assign, std::vector<uintVector>(), opt_brlen_f, spr_round_f, compute_ancestral_f, num_tips, num_inner, num_branches);
 }
 
 TreeInfo::TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights,
-					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f)
+					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches)
 {
-  init(opts, std::vector<doubleVector>(), base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights, opt_brlen_f, spr_round_f, compute_ancestral_f);
+  init(opts, std::vector<doubleVector>(), base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights, opt_brlen_f, spr_round_f, compute_ancestral_f, num_tips, num_inner, num_branches);
 }
 
 pllmod_treeinfo_t* TreeInfo::create_base_treeinfo(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa) {
@@ -68,8 +68,24 @@ pllmod_treeinfo_t* TreeInfo::create_base_treeinfo(const Options &opts, const Tre
 void TreeInfo::init(const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
                     const IDVector& tip_msa_idmap,
                     const PartitionAssignment& part_assign,
+                    const std::vector<uintVector>& site_weights)
+{
+  assert(base_treeinfo);
+  size_t n = base_treeinfo->tip_count;
+  size_t num_tips = n;
+  size_t num_inner = n - 2;
+  size_t num_branches = 2 * n - 3;
+  OptBrlenFunc opt_brlen_f = pllmod_algo_opt_brlen_treeinfo;
+  SprRoundFunc spr_round_f = pllmod_algo_spr_round;
+  AncestralFunc compute_ancestral_f = pllmod_treeinfo_compute_ancestral;
+  init(opts, partition_brlens, base_treeinfo, parted_msa, tip_msa_idmap, part_assign, site_weights, opt_brlen_f, spr_round_f, compute_ancestral_f, num_tips, num_inner, num_branches);
+}
+
+void TreeInfo::init(const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
+                    const IDVector& tip_msa_idmap,
+                    const PartitionAssignment& part_assign,
                     const std::vector<uintVector>& site_weights,
-					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f)
+					OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches)
 {
   _opt_brlen_function = opt_brlen_f;
   _spr_round_function = spr_round_f;
@@ -108,7 +124,7 @@ void TreeInfo::init(const Options &opts, const std::vector<doubleVector>& partit
     {
       /* create and init PLL partition structure */
       pll_partition_t * partition = create_pll_partition(opts, pinfo, tip_msa_idmap,
-                                                         *part_range, weights);
+                                                         *part_range, weights, num_tips, num_inner, num_branches);
 
       int retval = pllmod_treeinfo_init_partition(_pll_treeinfo, p, partition,
                                                   params_to_optimize,
@@ -632,7 +648,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
 
 pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& pinfo,
                                       const IDVector& tip_msa_idmap,
-                                      const PartitionRange& part_region, const uintVector& weights)
+                                      const PartitionRange& part_region, const uintVector& weights, size_t num_tips, size_t num_inner, size_t num_branches)
 {
   const MSA& msa = pinfo.msa();
   const Model& model = pinfo.model();
@@ -679,16 +695,15 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
     attrs |= (unsigned int) model.ascbias_type();
   }
 
-  BasicTree tree(msa.size());
   pll_partition_t * partition = pll_partition_create(
-      tree.num_tips(),         /* number of tip sequences */
-      tree.num_inner(),        /* number of CLV buffers */
+      num_tips,         /* number of tip sequences */
+      num_inner,        /* number of CLV buffers */
       model.num_states(),      /* number of states in the data */
       part_length,             /* number of alignment sites/patterns */
       model.num_submodels(),   /* number of different substitution models (LG4 = 4) */
-      tree.num_branches(),     /* number of probability matrices */
+      num_branches,     /* number of probability matrices */
       model.num_ratecats(),    /* number of (GAMMA) rate categories */
-      tree.num_inner(),        /* number of scaling buffers */
+      num_inner,        /* number of scaling buffers */
       attrs                    /* list of flags (SSE3/AVX, TIP-INNER special cases etc.) */
   );
 

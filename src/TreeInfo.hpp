@@ -40,21 +40,21 @@ public:
   TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
               const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
-			  OptBrlenFunc opt_brlen, SprRoundFunc spr_round, AncestralFunc computeAncestral);
+			  OptBrlenFunc opt_brlen, SprRoundFunc spr_round, AncestralFunc computeAncestral, size_t num_tips, size_t num_inner, size_t num_branches);
   TreeInfo (const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
               const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
               const std::vector<uintVector>& site_weights,
-			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
+			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches);
   TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
               const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
-			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
+			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches);
   TreeInfo (const Options &opts, pllmod_treeinfo_t* base_treeinfo,
 		      const PartitionedMSA& parted_msa,
               const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
               const std::vector<uintVector>& site_weights,
-			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
+			  OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches);
 
   virtual
   ~TreeInfo ();
@@ -102,7 +102,11 @@ private:
 
   void init(const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
-            const std::vector<uintVector>& site_weights, OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f);
+            const std::vector<uintVector>& site_weights, OptBrlenFunc opt_brlen_f, SprRoundFunc spr_round_f, AncestralFunc compute_ancestral_f, size_t num_tips, size_t num_inner, size_t num_branches);
+
+  void init(const Options &opts, const std::vector<doubleVector>& partition_brlens, pllmod_treeinfo_t* base_treeinfo, const PartitionedMSA& parted_msa,
+            const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign,
+            const std::vector<uintVector>& site_weights);
 
   void assert_lh_improvement(double old_lh, double new_lh, const std::string& where = "");
 };
@@ -113,6 +117,6 @@ void assign(Model& model, const TreeInfo& treeinfo, size_t partition_id);
 
 pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& pinfo,
                                       const IDVector& tip_msa_idmap,
-                                      const PartitionRange& part_region, const uintVector& weights);
+                                      const PartitionRange& part_region, const uintVector& weights, size_t num_tips, size_t num_inner, size_t num_branches);
 
 #endif /* RAXML_TREEINFO_HPP_ */
