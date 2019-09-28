@@ -20,12 +20,13 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
   init(opts, tree, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
-/*TreeInfo::TreeInfo(const Options &opts, const std::vector<doubleVector> &partition_brlens, pllmod_treeinfo_t *base_treeinfo,
+TreeInfo::TreeInfo(const Options &opts, const std::vector<doubleVector> &partition_brlens, pllmod_treeinfo_t *base_treeinfo,
   		const PartitionedMSA &parted_msa, const IDVector &tip_msa_idmap, const PartitionAssignment &part_assign,
   		const std::vector<uintVector> &site_weights, tinfo_behaviour alternative_behaviour) {
 	_behaviour = alternative_behaviour;
-	init(opts, tree, parted_msa, tip_msa_idmap, part_assign, site_weights);
-}*/
+
+	init(opts, base_treeinfo, base_treeinfo->tree->edge_count, partition_brlens, parted_msa, tip_msa_idmap, part_assign, site_weights);
+}
 
 void TreeInfo::normal_init(const Options &opts, const std::vector<doubleVector>& partition_brlens, size_t num_branches, const PartitionedMSA& parted_msa,
         const IDVector& tip_msa_idmap,
