@@ -138,7 +138,7 @@ void TreeInfo::init(const Options &opts, pllmod_treeinfo_t* base_treeinfo, size_
   _pll_treeinfo = base_treeinfo;
   assert(_pll_treeinfo);
 
-  normal_init(opts, partition_brlens, num_branches, parted_msa, tip_msa_idmap, part_assign, site_weights, &_partition_contributions, _pll_treeinfo, &_parts_master);
+  _behaviour.init_function(opts, partition_brlens, num_branches, parted_msa, tip_msa_idmap, part_assign, site_weights, &_partition_contributions, _pll_treeinfo, &_parts_master);
 }
 
 TreeInfo::~TreeInfo ()
