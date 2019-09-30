@@ -622,8 +622,9 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
 
 pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& pinfo,
                                       const IDVector& tip_msa_idmap,
-                                      const PartitionRange& part_region, const uintVector& weights)
+                                      const PartitionRange& part_region, const uintVector& weights, size_t num_tips, size_t num_inner, size_t num_branches)
 {
+  assert(num_tips == tip_msa_idmap.size());
   const MSA& msa = pinfo.msa();
   const Model& model = pinfo.model();
 
@@ -669,16 +670,15 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
     attrs |= (unsigned int) model.ascbias_type();
   }
 
-  BasicTree tree(msa.size());
   pll_partition_t * partition = pll_partition_create(
-      tree.num_tips(),         /* number of tip sequences */
-      tree.num_inner(),        /* number of CLV buffers */
+	  num_tips,         /* number of tip sequences */
+      num_inner,        /* number of CLV buffers */
       model.num_states(),      /* number of states in the data */
       part_length,             /* number of alignment sites/patterns */
       model.num_submodels(),   /* number of different substitution models (LG4 = 4) */
-      tree.num_branches(),     /* number of probability matrices */
+      num_branches,     /* number of probability matrices */
       model.num_ratecats(),    /* number of (GAMMA) rate categories */
-      tree.num_inner(),        /* number of scaling buffers */
+      num_inner,        /* number of scaling buffers */
       attrs                    /* list of flags (SSE3/AVX, TIP-INNER special cases etc.) */
   );
 
@@ -696,4 +696,13 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
   assign(partition, model);
 
   return partition;
+}
+
+pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& pinfo,
+                                      const IDVector& tip_msa_idmap,
+                                      const PartitionRange& part_region, const uintVector& weights)
+{
+	const MSA& msa = pinfo.msa();
+	BasicTree tree(msa.size());
+	return create_pll_partition(opts, pinfo, tip_msa_idmap, part_region, weights, tree.num_tips(), tree.num_inner(), tree.num_branches());
 }
