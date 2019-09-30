@@ -624,7 +624,6 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
                                       const IDVector& tip_msa_idmap,
                                       const PartitionRange& part_region, const uintVector& weights, size_t num_tips, size_t num_inner, size_t num_branches)
 {
-  assert(num_tips == tip_msa_idmap.size());
   const MSA& msa = pinfo.msa();
   const Model& model = pinfo.model();
 
