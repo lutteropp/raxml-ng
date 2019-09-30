@@ -28,7 +28,7 @@ TreeInfo::TreeInfo(const Options &opts, const std::vector<doubleVector> &partiti
 	init(opts, base_treeinfo, base_treeinfo->tree->edge_count, partition_brlens, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
-pll_partition_t* TreeInfo::normal_create_init_partition(size_t p, int params_to_optimize, pllmod_treeinfo_t* pll_treeinfo, const Options &opts,
+void TreeInfo::normal_create_init_partition(size_t p, int params_to_optimize, pllmod_treeinfo_t* pll_treeinfo, const Options &opts,
 		const PartitionInfo &pinfo, const IDVector &tip_msa_idmap, PartitionAssignment::const_iterator& part_range,
 		const uintVector &weights) {
 	/* create and init PLL partition structure */
@@ -39,7 +39,6 @@ pll_partition_t* TreeInfo::normal_create_init_partition(size_t p, int params_to_
 		assert(pll_errno);
 		libpll_check_error("ERROR adding treeinfo partition");
 	}
-	return partition;
 }
 
 void TreeInfo::internal_init(const Options &opts, const std::vector<doubleVector>& partition_brlens, size_t num_branches, const PartitionedMSA& parted_msa,
@@ -75,7 +74,7 @@ void TreeInfo::internal_init(const Options &opts, const std::vector<doubleVector
 	if (part_range != part_assign.end())
 	{
 	  /* create and init PLL partition structure */
-		pll_partition_t * partition = _behaviour.create_init_partition_function(p, params_to_optimize, _pll_treeinfo, opts,
+	  _behaviour.create_init_partition_function(p, params_to_optimize, _pll_treeinfo, opts,
 				pinfo, tip_msa_idmap, part_range,
 				weights);
 

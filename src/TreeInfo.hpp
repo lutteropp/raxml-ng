@@ -33,7 +33,7 @@ public:
   using SprRoundFunc = std::function<double(pllmod_treeinfo_t *, unsigned int, unsigned int, unsigned int, pll_bool_t, int, double, double, int, double, cutoff_info_t *, double)>;
   using AncestralFunc = std::function<pllmod_ancestral_t*(pllmod_treeinfo_t *)>;
   using DestroyTreeinfoFunc = std::function<void(pllmod_treeinfo_t*)>;
-  using InitCreatePartitionFunc = std::function<pll_partition_t*(size_t, int, pllmod_treeinfo_t*, const Options &,
+  using InitCreatePartitionFunc = std::function<void(size_t, int, pllmod_treeinfo_t*, const Options &,
 			const PartitionInfo &, const IDVector &, PartitionAssignment::const_iterator&,
 			const uintVector &)>;
 
@@ -113,7 +113,7 @@ private:
   		pllmod_treeinfo_t* pll_treeinfo,
   		IDSet* parts_master);
 
-  static pll_partition_t* normal_create_init_partition(size_t p, int params_to_optimize, pllmod_treeinfo_t* pll_treeinfo, const Options &opts,
+  static void normal_create_init_partition(size_t p, int params_to_optimize, pllmod_treeinfo_t* pll_treeinfo, const Options &opts,
   		const PartitionInfo &pinfo, const IDVector &tip_msa_idmap, PartitionAssignment::const_iterator& part_range,
   		const uintVector &weights);
 
