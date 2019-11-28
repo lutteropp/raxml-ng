@@ -45,6 +45,16 @@ public:
 	InitCreatePartitionFunc create_init_partition_function = normal_create_init_partition;
   };
 
+  TreeInfo() {
+	 _pll_treeinfo = nullptr;
+	 IDSet _parts_master = IDSet();
+	 _brlen_opt_method = 0;
+	 _brlen_min = 0;
+	 _brlen_max = 0;
+	 _check_lh_impr = false;
+	 _partition_contributions= doubleVector();
+  }
+
   TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
             const IDVector& tip_msa_idmap, const PartitionAssignment& part_assign);
   TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
