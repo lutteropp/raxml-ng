@@ -191,9 +191,9 @@ bool check_msa_global(const MSA& msa)
   bool msa_valid = true;
 
   /* check taxa count */
-  if (msa.size() < 4)
+  if (msa.size() < 3)
   {
-    LOG_ERROR << "\nERROR: Your alignment contains less than 4 sequences! " << endl;
+    LOG_ERROR << "\nERROR: Your alignment contains less than 3 sequences! " << endl;
     msa_valid = false;
   }
 
