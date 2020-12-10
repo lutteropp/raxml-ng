@@ -1722,7 +1722,7 @@ void draw_bootstrap_support(RaxmlInstance& instance, Tree& ref_tree,
 }
 
 bool check_bootstop(const RaxmlInstance& instance, const TreeTopologyList& bs_trees,
-                    bool print = false)
+                    bool print)
 {
   if (!instance.bootstop_checker)
     return false;
