@@ -103,6 +103,7 @@ struct RaxmlInstance
 
   unique_ptr<RFDistCalculator> dist_calculator;
   AncestralStatesSharedPtr ancestral_states;
+  vector<vector<doubleVector>> persite_loglh;      // per-tree -> per-partition -> per-site
 
   vector<RaxmlWorker> workers;
   RaxmlWorker& get_worker() { return workers.at(ParallelContext::local_group_id()); }
