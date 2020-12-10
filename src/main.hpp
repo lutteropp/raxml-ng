@@ -26,6 +26,7 @@
 #include "io/binary_io.hpp"
 #include "ParallelContext.hpp"
 #include "loadbalance/LoadBalancer.hpp"
+#include "loadbalance/CoarseLoadBalancer.hpp"
 #include "bootstrap/BootstrapGenerator.hpp"
 #include "bootstrap/BootstopCheck.hpp"
 #include "bootstrap/TransferBootstrapTree.hpp"
@@ -33,6 +34,7 @@
 #include "autotune/ResourceEstimator.hpp"
 #include "ICScoreCalculator.hpp"
 #include "topology/RFDistCalculator.hpp"
+#include "util/EnergyMonitor.hpp"
 
 #ifdef _RAXML_TERRAPHAST
 #include "terraces/TerraceWrapper.hpp"
