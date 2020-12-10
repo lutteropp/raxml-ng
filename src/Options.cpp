@@ -1,7 +1,27 @@
 #include "Options.hpp"
 //#include <stdlib.h>
+#include <climits>
 
 using namespace std;
+
+Options::Options() : opt_version(RAXML_OPT_VERSION), cmdline(""), command(Command::none),
+use_tip_inner(true), use_pattern_compression(true), use_prob_msa(false), use_rate_scalers(false),
+use_repeats(true), use_rba_partload(true), use_energy_monitor(true),
+optimize_model(true), optimize_brlen(true), force_mode(false), safety_checks(SafetyCheck::all),
+redo_mode(false), nofiles_mode(false), write_interim_results(true), log_level(LogLevel::progress),
+msa_format(FileFormat::autodetect), data_type(DataType::autodetect),
+random_seed(0), start_trees(), lh_epsilon(DEF_LH_EPSILON), spr_radius(-1),
+spr_cutoff(1.0),
+brlen_linkage(PLLMOD_COMMON_BRLEN_SCALED), brlen_opt_method(PLLMOD_OPT_BLO_NEWTON_FAST),
+brlen_min(RAXML_BRLEN_MIN), brlen_max(RAXML_BRLEN_MAX),
+num_searches(1), terrace_maxsize(100),
+num_bootstraps(1000), bootstop_criterion(BootstopCriterion::none), bootstop_cutoff(0.03),
+bootstop_interval(RAXML_BOOTSTOP_INTERVAL), bootstop_permutations(RAXML_BOOTSTOP_PERMUTES),
+tbe_naive(false), consense_cutoff(ConsenseCutoff::MR), tree_file(""), constraint_tree_file(""),
+msa_file(""), model_file(""), weights_file(""), outfile_prefix(""),
+num_threads(1), num_threads_max(1), num_ranks(1), num_workers(1), num_workers_max(UINT_MAX),
+simd_arch(PLL_ATTRIB_ARCH_CPU), thread_pinning(false), load_balance_method(LoadBalancing::benoit)
+{}
 
 string Options::output_fname(const string& suffix) const
 {
@@ -23,6 +43,7 @@ void Options::set_default_outfiles()
   set_default_outfile(outfile_names.checkpoint, "ckp");
   set_default_outfile(outfile_names.start_tree, "startTree");
   set_default_outfile(outfile_names.best_tree, "bestTree");
+  set_default_outfile(outfile_names.best_tree_collapsed, "bestTreeCollapsed");
   set_default_outfile(outfile_names.best_model, "bestModel");
   set_default_outfile(outfile_names.partition_trees, "bestPartitionTrees");
   set_default_outfile(outfile_names.ml_trees, "mlTrees");
@@ -38,7 +59,20 @@ void Options::set_default_outfiles()
   set_default_outfile(outfile_names.asr_tree, "ancestralTree");
   set_default_outfile(outfile_names.asr_probs, "ancestralProbs");
   set_default_outfile(outfile_names.asr_states, "ancestralStates");
+  set_default_outfile(outfile_names.site_loglh, "siteLH");
+  set_default_outfile(outfile_names.tmp_best_tree, "lastTree.TMP");
+  set_default_outfile(outfile_names.tmp_ml_trees, "mlTrees.TMP");
+  set_default_outfile(outfile_names.tmp_bs_trees, "bootstraps.TMP");
 }
+
+std::string Options::checkp_file() const
+{
+  if (coarse() && ParallelContext::num_ranks() > 1)
+    return outfile_names.checkpoint + "." + to_string(ParallelContext::rank_id());
+  else
+    return outfile_names.checkpoint;
+}
+
 
 const std::string& Options::support_tree_file(BranchSupportMetric bsm) const
 {
@@ -76,14 +110,14 @@ bool Options::result_files_exist() const
   {
     case Command::evaluate:
     case Command::search:
-      return sysutil_file_exists(best_tree_file()) || sysutil_file_exists(best_model_file()) ||
-             sysutil_file_exists(partition_trees_file());
+      return sysutil_file_exists(best_tree_file()) || sysutil_file_exists(best_tree_collapsed_file()) ||
+             sysutil_file_exists(best_model_file()) ||sysutil_file_exists(partition_trees_file());
     case Command::bootstrap:
       return sysutil_file_exists(bootstrap_trees_file());
     case Command::all:
       return sysutil_file_exists(best_tree_file()) || sysutil_file_exists(bootstrap_trees_file()) ||
              sysutil_file_exists(support_tree_file()) || sysutil_file_exists(best_model_file()) ||
-             sysutil_file_exists(partition_trees_file());
+             sysutil_file_exists(partition_trees_file()) || sysutil_file_exists(best_tree_collapsed_file());
     case Command::support:
       return sysutil_file_exists(support_tree_file());
     case Command::terrace:
@@ -100,6 +134,8 @@ bool Options::result_files_exist() const
     case Command::ancestral:
       return sysutil_file_exists(asr_tree_file()) || sysutil_file_exists(asr_probs_file()) ||
              sysutil_file_exists(asr_states_file());
+    case Command::sitelh:
+      return sysutil_file_exists(sitelh_file());
     default:
       return false;
   }
@@ -110,36 +146,24 @@ void Options::remove_result_files() const
   if (command == Command::search || command == Command::all ||
       command == Command::evaluate)
   {
-    if (sysutil_file_exists(best_tree_file()))
-      std::remove(best_tree_file().c_str());
-    if (sysutil_file_exists(best_model_file()))
-      std::remove(best_model_file().c_str());
-    if (sysutil_file_exists(partition_trees_file()))
-      std::remove(partition_trees_file().c_str());
+    sysutil_file_remove(best_tree_file());
+    sysutil_file_remove(best_tree_collapsed_file());
+    sysutil_file_remove(best_model_file());
+    sysutil_file_remove(partition_trees_file());
+    sysutil_file_remove(ml_trees_file());
   }
 
   if (command == Command::bootstrap || command == Command::all)
-  {
-    if (sysutil_file_exists(bootstrap_trees_file()))
-      std::remove(bootstrap_trees_file().c_str());
-  }
+    sysutil_file_remove(bootstrap_trees_file());
+
   if (command == Command::support || command == Command::all)
-  {
-    if (sysutil_file_exists(support_tree_file()))
-      std::remove(support_tree_file().c_str());
-  }
+    sysutil_file_remove(support_tree_file());
 
   if (command == Command::terrace)
-  {
-    if (sysutil_file_exists(terrace_file()))
-      std::remove(terrace_file().c_str());
-  }
+    sysutil_file_remove(terrace_file());
 
   if (command == Command::start)
-  {
-    if (sysutil_file_exists(start_tree_file()))
-      std::remove(start_tree_file().c_str());
-  }
+    sysutil_file_remove(start_tree_file());
 
   if (command == Command::bsmsa)
   {
@@ -149,8 +173,7 @@ void Options::remove_result_files() const
       std::remove(bootstrap_msa_file(bsnum).c_str());
       bsnum++;
     }
-    if (sysutil_file_exists(bootstrap_partition_file()))
-      std::remove(bootstrap_partition_file().c_str());
+    sysutil_file_remove(bootstrap_partition_file());
   }
 
   if (command == Command::rfdist)
@@ -159,13 +182,22 @@ void Options::remove_result_files() const
   if (command == Command::consense)
     sysutil_file_remove(cons_tree_file());
 
-  if (command == Command::consense)
+  if (command == Command::sitelh)
+    sysutil_file_remove(sitelh_file());
+
+  if (command == Command::ancestral)
   {
     sysutil_file_remove(asr_tree_file());
     sysutil_file_remove(asr_probs_file());
     sysutil_file_remove(asr_states_file());
   }
+}
 
+void Options::remove_tmp_files() const
+{
+  sysutil_file_remove(tmp_best_tree_file());
+  sysutil_file_remove(tmp_ml_trees_file());
+  sysutil_file_remove(tmp_bs_trees_file());
 }
 
 string Options::simd_arch_name() const
@@ -262,6 +294,9 @@ std::ostream& operator<<(std::ostream& stream, const Options& opts)
     case Command::ancestral:
       stream << "Ancestral state reconstruction";
       break;
+    case Command::sitelh:
+      stream << "Per-site likelihood computation";
+      break;
     default:
       break;
   }
@@ -347,6 +382,21 @@ std::ostream& operator<<(std::ostream& stream, const Options& opts)
   if (!opts.constraint_tree_file.empty())
     stream << "  topological constraint: " << opts.constraint_tree_file << endl;
 
+  if (!opts.weights_file.empty())
+    stream << "  site weights: " << opts.weights_file << endl;
+
+  if (!opts.outgroup_taxa.empty())
+  {
+    stream << "  outgroup taxa: ";
+    for (auto it = opts.outgroup_taxa.cbegin(); it != opts.outgroup_taxa.cend(); ++it)
+    {
+      if (it != opts.outgroup_taxa.cbegin())
+        stream << ",";
+      stream << *it;
+    }
+    stream << endl;
+  }
+
   stream << "  random seed: " << opts.random_seed << endl;
 
   if (opts.command == Command::bootstrap || opts.command == Command::all ||
@@ -411,15 +461,26 @@ std::ostream& operator<<(std::ostream& stream, const Options& opts)
   stream << "  SIMD kernels: " << opts.simd_arch_name() << endl;
 
   stream << "  parallelization: ";
+  if (opts.coarse())
+    stream << "coarse-grained (" << opts.num_workers << " workers), " ;
+  else if (opts.num_workers_max > 1 && opts.num_workers == 0)
+    stream << "coarse-grained (auto), ";
+
   if (opts.num_ranks > 1 && opts.num_threads > 1)
   {
     stream << "hybrid MPI+PTHREADS (" << opts.num_ranks <<  " ranks x " <<
         opts.num_threads <<  " threads)";
   }
+  else if (opts.num_ranks > 1 && opts.num_threads_max > 1 && opts.num_threads == 0)
+  {
+    stream << "hybrid MPI (" << opts.num_ranks <<  " ranks) + PTHREADS (auto)";
+  }
   else if (opts.num_ranks > 1)
     stream <<  "MPI (" << opts.num_ranks << " ranks)";
   else if (opts.num_threads > 1)
     stream << "PTHREADS (" << opts.num_threads << " threads)" ;
+  else if (opts.num_threads == 0 && opts.num_threads_max > 1)
+    stream << "PTHREADS (auto)" ;
   else
     stream << "NONE/sequential";
 

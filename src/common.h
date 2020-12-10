@@ -22,9 +22,9 @@ extern "C" {
 #include "constants.hpp"
 #include "ParallelContext.hpp"
 #include "log.hpp"
-#include "SystemTimer.hpp"
+#include "util/SystemTimer.hpp"
 
-/* used to supress compiler warnings about unused args */
+/* used to suppress compiler warnings about unused args */
 #define RAXML_UNUSED(expr) (void)(expr)
 
 /* system utils */
@@ -36,11 +36,14 @@ void libpll_reset_error();
 double sysutil_gettime();
 void sysutil_show_rusage();
 unsigned long sysutil_get_memused();
-unsigned long sysutil_get_memtotal();
+unsigned long sysutil_get_memtotal(bool ignore_errors = true);
 
+std::string sysutil_get_cpu_model();
 unsigned int sysutil_get_cpu_cores();
 unsigned long sysutil_get_cpu_features();
 unsigned int sysutil_simd_autodetect();
+
+double sysutil_get_energy();
 
 const SystemTimer& global_timer();
 std::string sysutil_fmt_time(const time_t& t);

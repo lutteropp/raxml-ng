@@ -314,6 +314,13 @@ void Tree::reset_tip_ids(const NameIdMap& label_id_map)
   }
 }
 
+void Tree::fix_outbound_brlens(double min_brlen, double max_brlen)
+{
+  for (auto n: subnodes())
+  {
+    n->length = std::max(min_brlen, std::min(n->length, max_brlen));
+  }
+}
 
 void Tree::fix_missing_brlens(double new_brlen)
 {
@@ -323,6 +330,12 @@ void Tree::fix_missing_brlens(double new_brlen)
 void Tree::reset_brlens(double new_brlen)
 {
   pllmod_utree_set_length_recursive(_pll_utree.get(), new_brlen, 0);
+}
+
+void Tree::collapse_short_branches(double min_brlen)
+{
+  if (!pllmod_utree_collapse_branches(_pll_utree.get(), min_brlen))
+    libpll_check_error("Failed to collapse short branches: ", true);
 }
 
 PllNodeVector Tree::subnodes() const
@@ -353,11 +366,18 @@ TreeTopology Tree::topology() const
 {
   TreeTopology topol;
 
+  /* empty tree -> return empty topology */
+  if (!num_tips())
+    return topol;
+
+  topol.vroot_node_id = _pll_utree->vroot->node_index;
+
   topol.edges.resize(num_branches());
 
   size_t branches = 0;
   for (auto n: subnodes())
   {
+    assert(n);
     if (n->node_index < n->back->node_index)
     {
       topol.edges.at(n->pmatrix_index) = TreeBranch(n->node_index, n->back->node_index, n->length);
@@ -394,6 +414,8 @@ void Tree::topology(const TreeTopology& topol)
 //    printf("%u %u %lf %d  (%u - %u) \n", branch.left_node_id, branch.right_node_id,
 //           branch.length, left_node->pmatrix_index, left_node->clv_index, right_node->clv_index);
   }
+
+  _pll_utree->vroot = allnodes[topol.vroot_node_id];
 
   _partition_brlens = topol.brlens;
 
@@ -473,20 +495,19 @@ void Tree::reroot(const NameList& outgroup_taxa, bool add_root_node)
     libpll_check_error("Unable to reroot tree");
 }
 
-TreeCollection::const_iterator TreeCollection::best() const
+ScoredTopologyMap::const_iterator ScoredTopologyMap::best() const
 {
   return std::max_element(_trees.cbegin(), _trees.cend(),
                           [](const value_type& a, const value_type& b) -> bool
-                          { return a.first < b.first; }
+                          { return a.second.first < b.second.first; }
                          );
 }
 
-void TreeCollection::push_back(double score, const Tree& tree)
+const ScoredTopologyMap::mapped_type& ScoredTopologyMap::at(size_t index) const
 {
-  _trees.emplace_back(score, tree.topology());
+  if (_trees.count(index))
+    return _trees.at(index);
+  else
+    throw runtime_error("ScoredTopologyMap: Invalid tree id: " + to_string(index));
 }
 
-void TreeCollection::push_back(double score, TreeTopology&& topol)
-{
-  _trees.emplace_back(score, topol);
-}

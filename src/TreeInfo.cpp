@@ -21,90 +21,85 @@ TreeInfo::TreeInfo (const Options &opts, const Tree& tree, const PartitionedMSA&
 }
 
 TreeInfo::TreeInfo(const Options &opts, const std::vector<doubleVector> &partition_brlens, pllmod_treeinfo_t *base_treeinfo,
-  		const PartitionedMSA &parted_msa, const IDVector &tip_msa_idmap, const PartitionAssignment &part_assign,
-  		const std::vector<uintVector> &site_weights, tinfo_behaviour alternative_behaviour) {
-	_behaviour = alternative_behaviour;
+          const PartitionedMSA &parted_msa, const IDVector &tip_msa_idmap, const PartitionAssignment &part_assign,
+          const std::vector<uintVector> &site_weights, tinfo_behaviour alternative_behaviour) {
+    _behaviour = alternative_behaviour;
 
-	init(opts, base_treeinfo, base_treeinfo->tree->edge_count, partition_brlens, parted_msa, tip_msa_idmap, part_assign, site_weights);
+    init(opts, base_treeinfo, base_treeinfo->tree->edge_count, partition_brlens, parted_msa, tip_msa_idmap, part_assign, site_weights);
 }
 
 void TreeInfo::normal_create_init_partition(size_t p, int params_to_optimize, pllmod_treeinfo_t* pll_treeinfo, const Options &opts,
-		const PartitionInfo &pinfo, const IDVector &tip_msa_idmap, PartitionAssignment::const_iterator& part_range,
-		const uintVector &weights) {
-	/* create and init PLL partition structure */
-	pll_partition_t *partition = create_pll_partition(opts, pinfo, tip_msa_idmap, *part_range, weights);
-	int retval = pllmod_treeinfo_init_partition(pll_treeinfo, p, partition, params_to_optimize, pinfo.model().gamma_mode(),
-			pinfo.model().alpha(), pinfo.model().ratecat_submodels().data(), pinfo.model().submodel(0).rate_sym().data());
-	if (!retval) {
-		assert(pll_errno);
-		libpll_check_error("ERROR adding treeinfo partition");
-	}
+        const PartitionInfo &pinfo, const IDVector &tip_msa_idmap, PartitionAssignment::const_iterator& part_range,
+        const uintVector &weights) {
+    /* create and init PLL partition structure */
+    pll_partition_t *partition = create_pll_partition(opts, pinfo, tip_msa_idmap, *part_range, weights);
+    int retval = pllmod_treeinfo_init_partition(pll_treeinfo, p, partition, params_to_optimize, pinfo.model().gamma_mode(),
+            pinfo.model().alpha(), pinfo.model().ratecat_submodels().data(), pinfo.model().submodel(0).rate_sym().data());
+    if (!retval) {
+        assert(pll_errno);
+        libpll_check_error("ERROR adding treeinfo partition");
+    }
 }
 
 void TreeInfo::internal_init(const Options &opts, const std::vector<doubleVector>& partition_brlens, size_t num_branches, const PartitionedMSA& parted_msa,
         const IDVector& tip_msa_idmap,
         const PartitionAssignment& part_assign,
         const std::vector<uintVector>& site_weights,
-		doubleVector* partition_contributions,
-		pllmod_treeinfo_t* pll_treeinfo,
-		IDSet* parts_master) {
-  partition_contributions->resize(parted_msa.part_count());
+        pllmod_treeinfo_t* pll_treeinfo) {
+  _partition_contributions.resize(parted_msa.part_count());
   double total_weight = 0;
 
-  if (ParallelContext::num_procs() > 1)
-  {
-	pllmod_treeinfo_set_parallel_context(pll_treeinfo, (void *) nullptr,
-										 ParallelContext::parallel_reduce_cb);
-  }
+  pllmod_treeinfo_set_parallel_context(_pll_treeinfo, (void *) nullptr,
+                                       ParallelContext::parallel_reduce_cb);
 
   // init partitions
   int optimize_branches = opts.optimize_brlen ? PLLMOD_OPT_PARAM_BRANCHES_ITERATIVE : 0;
 
   for (size_t p = 0; p < parted_msa.part_count(); ++p)
   {
-	const PartitionInfo& pinfo = parted_msa.part_info(p);
-	const auto& weights = site_weights.empty() ? pinfo.msa().weights() : site_weights.at(p);
-	int params_to_optimize = opts.optimize_model ? pinfo.model().params_to_optimize() : 0;
-	params_to_optimize |= optimize_branches;
+   const PartitionInfo& pinfo = parted_msa.part_info(p);
+   const auto& weights = site_weights.empty() ? pinfo.msa().weights() : site_weights.at(p);
+   int params_to_optimize = opts.optimize_model ? pinfo.model().params_to_optimize() : 0;
+   params_to_optimize |= optimize_branches;
 
-	(*partition_contributions)[p] = std::accumulate(weights.begin(), weights.end(), 0);
-	total_weight += (*partition_contributions)[p];
+    _partition_contributions[p] = std::accumulate(weights.begin(), weights.end(), 0);
+    total_weight += _partition_contributions[p];
 
-	PartitionAssignment::const_iterator part_range = part_assign.find(p);
-	if (part_range != part_assign.end())
-	{
-	  /* create and init PLL partition structure */
-	  _behaviour.create_init_partition_function(p, params_to_optimize, _pll_treeinfo, opts,
-				pinfo, tip_msa_idmap, part_range,
-				weights);
+    PartitionAssignment::const_iterator part_range = part_assign.find(p);
+    if (part_range != part_assign.end())
+    {
+      /* create and init PLL partition structure */
+      _behaviour.create_init_partition_function(p, params_to_optimize, _pll_treeinfo, opts,
+                pinfo, tip_msa_idmap, part_range,
+                weights);
 
-	  // set per-partition branch lengths or scalers
-	  if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_SCALED)
-	  {
-		assert (pll_treeinfo->brlen_scalers);
-		pll_treeinfo->brlen_scalers[p] = pinfo.model().brlen_scaler();
-	  }
-	  else if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED && !partition_brlens.empty())
-	  {
-		assert(pll_treeinfo->branch_lengths[p]);
-		memcpy(pll_treeinfo->branch_lengths[p], partition_brlens[p].data(),
-			   num_branches * sizeof(double));
-	  }
+      // set per-partition branch lengths or scalers
+      if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_SCALED)
+      {
+        assert (pll_treeinfo->brlen_scalers);
+        pll_treeinfo->brlen_scalers[p] = pinfo.model().brlen_scaler();
+      }
+      else if (opts.brlen_linkage == PLLMOD_COMMON_BRLEN_UNLINKED && !partition_brlens.empty())
+      {
+        assert(pll_treeinfo->branch_lengths[p]);
+        memcpy(pll_treeinfo->branch_lengths[p], partition_brlens[p].data(),
+               num_branches * sizeof(double));
+      }
 
-	  if (part_range->master())
-		(*parts_master).insert(p);
-	}
-	else
-	{
-	  // this partition will be processed by other threads, but we still need to know
-	  // which parameters to optimize
-	  pll_treeinfo->params_to_optimize[p] = params_to_optimize;
-	}
+      if (part_range->master())
+        _parts_master.insert(p);
+    }
+    else
+    {
+      // this partition will be processed by other threads, but we still need to know
+      // which parameters to optimize
+      pll_treeinfo->params_to_optimize[p] = params_to_optimize;
+    }
   }
 
   // finalize partition contribution computation
-  for (auto& c: *partition_contributions)
-	c /= total_weight;
+  for (auto& c: _partition_contributions)
+   c /= total_weight;
 }
 
 void TreeInfo::init(const Options &opts, const Tree& tree, const PartitionedMSA& parted_msa,
@@ -118,12 +113,12 @@ void TreeInfo::init(const Options &opts, const Tree& tree, const PartitionedMSA&
   _check_lh_impr = opts.safety_checks.isset(SafetyCheck::model_lh_impr);
 
   _pll_treeinfo = pllmod_treeinfo_create(pll_utree_graph_clone(&tree.pll_utree_root()),
-  										 tree.num_tips(),
-  										 parted_msa.part_count(), opts.brlen_linkage);
+                                           tree.num_tips(),
+                                           parted_msa.part_count(), opts.brlen_linkage);
   libpll_check_error("ERROR creating treeinfo structure");
   assert(_pll_treeinfo);
 
-  internal_init(opts, tree.partition_brlens(), tree.num_branches(), parted_msa, tip_msa_idmap, part_assign, site_weights, &_partition_contributions, _pll_treeinfo, &_parts_master);
+  internal_init(opts, tree.partition_brlens(), tree.num_branches(), parted_msa, tip_msa_idmap, part_assign, site_weights, _pll_treeinfo);
 }
 
 void TreeInfo::init(const Options &opts, pllmod_treeinfo_t* base_treeinfo, size_t num_branches, const std::vector<doubleVector> &partition_brlens, const PartitionedMSA& parted_msa,
@@ -139,7 +134,7 @@ void TreeInfo::init(const Options &opts, pllmod_treeinfo_t* base_treeinfo, size_
   _pll_treeinfo = base_treeinfo;
   assert(_pll_treeinfo);
 
-  internal_init(opts, partition_brlens, num_branches, parted_msa, tip_msa_idmap, part_assign, site_weights, &_partition_contributions, _pll_treeinfo, &_parts_master);
+  internal_init(opts, partition_brlens, num_branches, parted_msa, tip_msa_idmap, part_assign, site_weights, _pll_treeinfo);
 }
 
 TreeInfo::~TreeInfo ()
@@ -223,6 +218,14 @@ double TreeInfo::loglh(bool incremental)
 {
   return pllmod_treeinfo_compute_loglh(_pll_treeinfo, incremental ? 1 : 0);
 }
+
+double TreeInfo::persite_loglh(std::vector<double*> part_site_lh, bool incremental)
+{
+  assert(part_site_lh.size() == _pll_treeinfo->partition_count);
+  return pllmod_treeinfo_compute_loglh_persite(_pll_treeinfo, incremental ? 1 : 0,
+      part_site_lh.data());
+}
+
 
 void TreeInfo::model(size_t partition_id, const Model& model)
 {
@@ -524,9 +527,14 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
                         const PartitionRange& part_region,
                         pll_partition_t* partition, const pll_state_t * charmap)
 {
+  /* get "true" sequence offset considering that MSA can be partially loaded */
+  auto seq_offset = msa.get_local_offset(part_region.start);
+
+//  printf("\n\n rank %lu, GLOBAL OFFSET %lu, LOCAL OFFSET %lu \n\n", ParallelContext::proc_id(), part_region.start, seq_offset);
+
   /* set pattern weights */
   if (!msa.weights().empty())
-    pll_set_pattern_weights(partition, msa.weights().data() + part_region.start);
+    pll_set_pattern_weights(partition, msa.weights().data() + seq_offset);
 
   if (opts.use_prob_msa && msa.probabilistic())
   {
@@ -534,7 +542,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
     assert(partition->states == msa.states());
 
     auto normalize = !msa.normalized();
-    auto weights_start = msa.weights().cbegin() + part_region.start;
+    auto weights_start = msa.weights().cbegin() + seq_offset;
 
     // we need a libpll function for that!
     auto clv_size = partition->sites * partition->states;
@@ -542,7 +550,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
     for (size_t tip_id = 0; tip_id < partition->tips; ++tip_id)
     {
       auto seq_id = tip_msa_idmap.empty() ? tip_id : tip_msa_idmap[tip_id];
-      auto prob_start = msa.probs(seq_id, part_region.start);
+      auto prob_start = msa.probs(seq_id, seq_offset);
       build_clv(prob_start, partition->sites, weights_start, partition, normalize, tmp_clv);
       pll_set_tip_clv(partition, tip_id, tmp_clv.data(), PLL_FALSE);
     }
@@ -552,7 +560,7 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
     for (size_t tip_id = 0; tip_id < partition->tips; ++tip_id)
     {
       auto seq_id = tip_msa_idmap.empty() ? tip_id : tip_msa_idmap[tip_id];
-      pll_set_tip_states(partition, tip_id, charmap, msa.at(seq_id).c_str() + part_region.start);
+      pll_set_tip_states(partition, tip_id, charmap, msa.at(seq_id).c_str() + seq_offset);
     }
   }
 }
@@ -564,8 +572,9 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
 {
   assert(!weights.empty());
 
-  const auto pstart = part_region.start;
-  const auto pend = part_region.start + part_region.length;
+  const auto pstart = msa.get_local_offset(part_region.start);
+  const auto plen = part_region.length;
+  const auto pend = pstart + plen;
 
   /* compress weights array by removing all zero entries */
   uintVector comp_weights;
@@ -582,22 +591,22 @@ void set_partition_tips(const Options& opts, const MSA& msa, const IDVector& tip
     assert(partition->states == msa.states());
 
     auto normalize = !msa.normalized();
-    auto weights_start = msa.weights().cbegin() + part_region.start;
+    auto weights_start = msa.weights().cbegin() + pstart;
 
     // we need a libpll function for that!
-    auto clv_size = part_region.length * partition->states;
+    auto clv_size = plen * partition->states;
     std::vector<double> tmp_clv(clv_size);
     for (size_t tip_id = 0; tip_id < partition->tips; ++tip_id)
     {
       auto seq_id = tip_msa_idmap.empty() ? tip_id : tip_msa_idmap[tip_id];
-      auto prob_start = msa.probs(seq_id, part_region.start);
-      build_clv(prob_start, part_region.length, weights_start, partition, normalize, tmp_clv);
+      auto prob_start = msa.probs(seq_id, pstart);
+      build_clv(prob_start, plen, weights_start, partition, normalize, tmp_clv);
       pll_set_tip_clv(partition, tip_id, tmp_clv.data(), PLL_FALSE);
     }
   }
   else
   {
-    std::vector<char> bs_seq(part_region.length);
+    std::vector<char> bs_seq(plen);
     for (size_t tip_id = 0; tip_id < partition->tips; ++tip_id)
     {
       auto seq_id = tip_msa_idmap.empty() ? tip_id : tip_msa_idmap[tip_id];
@@ -623,11 +632,14 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
 {
   const MSA& msa = pinfo.msa();
   const Model& model = pinfo.model();
+  const auto pstart = msa.get_local_offset(part_region.start);
+
+//  printf("\n\n rank %lu, GLOBAL OFFSET %lu, LOCAL OFFSET %lu \n\n", ParallelContext::proc_id(), part_region.start, pstart);
 
   /* part_length doesn't include columns with zero weight */
   const size_t part_length = weights.empty() ? part_region.length :
-                             std::count_if(weights.begin() + part_region.start,
-                                           weights.begin() + part_region.start + part_region.length,
+                             std::count_if(weights.begin() + pstart,
+                                           weights.begin() + pstart + part_region.length,
                                            [](uintVector::value_type w) -> bool
                                              { return w > 0; }
                                            );
@@ -667,7 +679,7 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
   }
 
   pll_partition_t * partition = pll_partition_create(
-	  num_tips,         /* number of tip sequences */
+      num_tips,         /* number of tip sequences */
       num_inner,        /* number of CLV buffers */
       model.num_states(),      /* number of states in the data */
       part_length,             /* number of alignment sites/patterns */
@@ -698,7 +710,7 @@ pll_partition_t* create_pll_partition(const Options& opts, const PartitionInfo& 
                                       const IDVector& tip_msa_idmap,
                                       const PartitionRange& part_region, const uintVector& weights)
 {
-	const MSA& msa = pinfo.msa();
-	BasicTree tree(msa.size());
-	return create_pll_partition(opts, pinfo, tip_msa_idmap, part_region, weights, tree.num_tips(), tree.num_inner(), tree.num_branches());
+    const MSA& msa = pinfo.msa();
+    BasicTree tree(msa.size());
+    return create_pll_partition(opts, pinfo, tip_msa_idmap, part_region, weights, tree.num_tips(), tree.num_inner(), tree.num_branches());
 }

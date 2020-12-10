@@ -21,7 +21,7 @@ set (ENABLE_PLLMOD_SIMD OFF CACHE BOOL "Enable SIMD instructions in pll-modules 
 set(STATIC_BUILD OFF CACHE BOOL "Build static binary")
 
 set(USE_TERRAPHAST ON CACHE BOOL "Use phylogentic terraces library (terraphast) ")
-set(USE_GMP OFF CACHE BOOL "Use Gnu Muliple precision (GMP) library ")
+set(USE_GMP OFF CACHE BOOL "Use GNU Multiple precision (GMP) library ")
 
 set(ENABLE_PTHREADS ${USE_PTHREADS})
 
@@ -70,8 +70,8 @@ if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS RAXML_COMPILER_TARGET_VERSION)
 endif()
 
 
-set (raxml-ng_VERSION_MAJOR 0)
-set (raxml-ng_VERSION_MINOR 8)
+set (raxml-ng_VERSION_MAJOR 1)
+set (raxml-ng_VERSION_MINOR 0)
 
 #set (CMAKE_BUILD_TYPE DEBUG)
 #set (CMAKE_BUILD_TYPE RELEASE)

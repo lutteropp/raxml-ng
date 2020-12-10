@@ -40,21 +40,42 @@
 
 using namespace std;
 
+struct RaxmlWorker;
+
+enum class RaxmlRunPhase
+{
+  start,
+  mlsearch,
+  bootstrap,
+  finish
+};
+
 struct RaxmlInstance
 {
   Options opts;
   shared_ptr<PartitionedMSA> parted_msa;
   unique_ptr<PartitionedMSA> parted_msa_parsimony;
-  TreeList start_trees;
-  BootstrapReplicateList bs_reps;
-  TreeList bs_start_trees;
-  PartitionAssignmentList proc_part_assign;
-  unique_ptr<LoadBalancer> load_balancer;
   map<BranchSupportMetric, shared_ptr<SupportTree> > support_trees;
   shared_ptr<ConsensusTree> consens_tree;
 
+  TreeList start_trees;
+  BootstrapReplicateList bs_reps;
+  TreeList bs_start_trees;
+
+  /* IDs of the trees that have been already inferred (eg after resuming from a checkpoint) */
+  IDSet done_ml_trees;
+  IDSet done_bs_trees;
+
+  // load balancing
+  PartitionAssignmentList proc_part_assign;
+  unique_ptr<LoadBalancer> load_balancer;
+  unique_ptr<CoarseLoadBalancer> coarse_load_balancer;
+
   // bootstopping convergence test, only autoMRE is supported for now
   unique_ptr<BootstopCheckMRE> bootstop_checker;
+  bool bs_converged;
+  RaxmlRunPhase run_phase;
+  double used_wh;
 
   // mapping taxon name -> tip_id/clv_id in the tree
   NameIdMap tip_id_map;
@@ -76,8 +97,34 @@ struct RaxmlInstance
   /* topological constraint */
   Tree constraint_tree;
 
+  MLTree ml_tree;
+
   unique_ptr<RFDistCalculator> dist_calculator;
   AncestralStatesSharedPtr ancestral_states;
+
+  vector<RaxmlWorker> workers;
+  RaxmlWorker& get_worker() { return workers.at(ParallelContext::local_group_id()); }
+
+  RaxmlInstance() : bs_converged(false), run_phase(RaxmlRunPhase::start), used_wh(0) {}
+};
+
+struct RaxmlWorker
+{
+  RaxmlWorker(RaxmlInstance& inst, unsigned int id) :
+    instance(inst), worker_id(id) {}
+
+  RaxmlInstance& instance;
+
+  unsigned int worker_id;
+//  TreeList start_trees;
+//  BootstrapReplicateList bs_reps;
+//  TreeList bs_start_trees;
+
+  IDVector start_trees;
+  IDVector bs_trees;
+  PartitionAssignmentList proc_part_assign;
+
+  size_t total_num_searches() const { return start_trees.size() + bs_trees.size(); }
 };
 
 void print_banner();

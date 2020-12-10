@@ -15,8 +15,10 @@ public:
 
   // getters
   const MSA& full_msa() const { return (part_count() == 1) ? _part_list.at(0).msa() : _full_msa; };
+  const MSA& part_msa(size_t index) const { return _part_list.at(index).msa(); };
   const PartitionInfo& part_info(size_t index) const { return _part_list.at(index); };
   const Model& model(size_t index) const { return _part_list.at(index).model(); };
+  ModelCRefMap models() const;
   const std::vector<PartitionInfo>& part_list() const { return _part_list; };
   std::vector<PartitionInfo>& part_list() { return _part_list; };
   const NameList& taxon_names()  const { return _taxon_names; };
@@ -24,6 +26,7 @@ public:
 
   size_t full_msa_site(size_t index, size_t site) const;
   const uintVector& site_part_map() const;
+  IdPairVector full_to_parted_sitemap() const;
 
   size_t taxon_count() const { return _taxon_names.size(); };
   size_t part_count() const { return _part_list.size(); };
@@ -56,7 +59,7 @@ public:
   }
 
   void split_msa();
-  void compress_patterns();
+  void compress_patterns(bool store_backmap = false);
   void set_model_empirical_params();
 
 private:

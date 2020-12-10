@@ -8,9 +8,16 @@ PartitionInfo::~PartitionInfo ()
 {
 }
 
-size_t PartitionInfo::taxon_clv_size() const
+size_t PartitionInfo::length() const
 {
-  return _model.clv_entry_size() * (_msa.num_patterns() ? _msa.num_patterns() : _msa.num_sites());
+  const auto& st = stats();
+  return st.pattern_count ? st.pattern_count : st.site_count;
+}
+
+size_t PartitionInfo::taxon_clv_size(bool partial) const
+{
+  auto sites = partial ? (_msa.num_patterns() ? _msa.num_patterns() : _msa.num_sites()) : length();
+  return _model.clv_entry_size() * sites;
 }
 
 size_t PartitionInfo::mark_partition_sites(unsigned int part_num, std::vector<unsigned int>& site_part) const
@@ -67,9 +74,9 @@ size_t PartitionInfo::mark_partition_sites(unsigned int part_num, std::vector<un
   return sites_assigned;
 }
 
-void PartitionInfo::compress_patterns()
+void PartitionInfo::compress_patterns(bool store_backmap)
 {
-  _msa.compress_patterns(model().charmap());
+  _msa.compress_patterns(model().charmap(), store_backmap);
 }
 
 pllmod_msa_stats_t * PartitionInfo::compute_stats(unsigned long stats_mask) const

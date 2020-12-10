@@ -57,7 +57,7 @@ static struct option long_options[] =
   {"blmax",              required_argument, 0, 0 },  /*  37 */
 
   {"tree-constraint",    required_argument, 0, 0 },  /*  38 */
-  {"nofiles",            no_argument,       0, 0 },  /*  39 */
+  {"nofiles",            optional_argument, 0, 0 },  /*  39 */
   {"start",              no_argument,       0, 0 },  /*  40 */
   {"loglh",              no_argument,       0, 0 },  /*  41 */
   {"precision",          required_argument, 0, 0 },  /*  42 */
@@ -74,6 +74,10 @@ static struct option long_options[] =
   {"rf",                 optional_argument, 0, 0 },  /*  51 */
   {"consense",           optional_argument, 0, 0 },  /*  52 */
   {"ancestral",          optional_argument, 0, 0 },  /*  53 */
+
+  {"workers",            required_argument, 0, 0 },  /*  54 */
+  {"sitelh",             no_argument, 0, 0 },        /*  55 */
+  {"site-weights",       required_argument, 0, 0 },  /*  56 */
 
   { 0, 0, 0, 0 }
 };
@@ -101,7 +105,7 @@ void CommandLineParser::check_options(Options &opts)
 
   if (opts.command == Command::evaluate || opts.command == Command::support ||
       opts.command == Command::terrace || opts.command == Command::rfdist ||
-      opts.command == Command::ancestral)
+      opts.command == Command::sitelh || opts.command == Command::ancestral)
   {
     if (opts.tree_file.empty())
       throw OptionException("Please provide a valid Newick file as an argument of --tree option.");
@@ -176,7 +180,7 @@ void CommandLineParser::compute_num_searches(Options &opts)
 {
   if (opts.command == Command::search || opts.command == Command::all ||
       opts.command == Command::evaluate || opts.command == Command::start ||
-      opts.command == Command::ancestral)
+      opts.command == Command::ancestral || opts.command == Command::sitelh)
   {
     if (opts.start_trees.empty())
     {
@@ -258,6 +262,9 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
   /* use probabilistic MSA _if available_ (e.g. CATG file was provided) */
   opts.use_prob_msa = true;
 
+  /* use RBA partial loading whenever appropriate/possible */
+  opts.use_rba_partload = true;
+
   /* optimize model and branch lengths */
   opts.optimize_model = true;
   opts.optimize_brlen = true;
@@ -281,13 +288,17 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
   opts.brlen_min = RAXML_BRLEN_MIN;
   opts.brlen_max = RAXML_BRLEN_MAX;
 
+  /* by default, autodetect optimal number of threads and workers for the dataset */
   opts.num_threads = 0;
+  opts.num_workers = 0;
 
-  /* use all available cores per default */
-#if defined(_RAXML_PTHREADS) && !defined(_RAXML_MPI)
-  opts.num_threads = std::max(1u, sysutil_get_cpu_cores());
-#else
+  /* max #threads = # available CPU cores */
+#if !defined(_RAXML_PTHREADS)
   opts.num_threads = 1;
+#elif !defined(_RAXML_MPI)
+  opts.num_threads_max = std::max(1u, sysutil_get_cpu_cores());
+#else
+  opts.num_threads_max = std::max(1u, (unsigned int) (sysutil_get_cpu_cores() / ParallelContext::ranks_per_node()));
 #endif
 
 #if defined(_RAXML_MPI)
@@ -466,10 +477,15 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         break;
 
       case 19:  /* number of threads */
-        if (sscanf(optarg, "%u", &opts.num_threads) != 1 || opts.num_threads == 0)
+        if (strncasecmp(optarg, "auto", 4) == 0)
+        {
+          opts.num_threads = 0;
+          sscanf(optarg, "auto{%u}", &opts.num_threads_max);
+        }
+        else if (sscanf(optarg, "%u", &opts.num_threads) != 1 || opts.num_threads == 0)
         {
           throw InvalidOptionValueException("Invalid number of threads: %s " + string(optarg) +
-                                            ", please provide a positive integer number!");
+                                            ", please provide a positive integer number or `auto`!");
         }
         break;
       case 20: /* SIMD instruction set */
@@ -673,7 +689,22 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         opts.constraint_tree_file = optarg;
         break;
       case 39: /* no output files (only console output) */
-        opts.nofiles_mode = true;
+        if (!optarg || strlen(optarg) == 0)
+        {
+          opts.nofiles_mode = true;
+          opts.write_interim_results = false;
+        }
+        else
+        {
+          auto files = split_string(optarg, ',');
+          for (const auto& f: files)
+          {
+            if (f == "interim")
+              opts.write_interim_results = false;
+            else
+              throw InvalidOptionValueException("Invalid --nofiles option: " + f);
+          }
+        }
         break;
       case 40: /* start tree generation */
         opts.command = Command::start;
@@ -749,8 +780,12 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
               opts.tbe_naive = true;
             else if (eopt == "tbe-nature")
               opts.tbe_naive = false;
+            else if (eopt == "rba-nopartload")
+              opts.use_rba_partload = false;
+            else if (eopt == "energy-off")
+              opts.use_energy_monitor = false;
             else
-              throw InvalidOptionValueException("Unknown extra option: " + string(optarg));
+              throw InvalidOptionValueException("Unknown extra option: " + string(eopt));
           }
         }
         break;
@@ -846,6 +881,29 @@ void CommandLineParser::parse_options(int argc, char** argv, Options &opts)
         num_commands++;
         break;
 
+      case 54:  /* number of workers (=parallel tree searches) */
+        if (strncasecmp(optarg, "auto", 4) == 0)
+        {
+          opts.num_workers = 0;
+          sscanf(optarg, "auto{%u}", &opts.num_workers_max);
+        }
+        else if (sscanf(optarg, "%u", &opts.num_workers) != 1 || opts.num_workers == 0)
+        {
+          throw InvalidOptionValueException("Invalid number of workers: " + string(optarg) +
+                                            ", please provide a positive integer number or 'auto'!");
+        }
+        break;
+
+      case 55: /* per-site log-likelihoods */
+        opts.command = Command::sitelh;
+        num_commands++;
+        break;
+
+      case 56: /* site weights */
+        opts.weights_file = optarg;
+        break;
+
+
       default:
         throw  OptionException("Internal error in option parsing");
     }
@@ -905,6 +963,7 @@ void CommandLineParser::print_help()
             "  --consense [ STRICT | MR | MR<n> | MRE ]   build strict, majority-rule (MR) or extended MR (MRE) consensus tree (default: MR)\n"
             "                                             eg: --consense MR75 --tree bsrep.nw\n"
             "  --ancestral                                ancestral state reconstruction at all inner nodes\n"
+            "  --sitelh                                   print per-site log-likelihood values\n"
             "\n"
             "Command shortcuts (mutually exclusive):\n"
             "  --search1                                  Alias for: --search --tree rand{1}\n"
@@ -924,6 +983,7 @@ void CommandLineParser::print_help()
             "  --nofiles                                  do not create any output files, print results to the terminal only\n"
             "  --precision       VALUE                    number of decimal places to print (default: 6)\n"
             "  --outgroup        o1,o2,..,oN              comma-separated list of outgroup taxon names (it's just a drawing option!)\n"
+            "  --site-weights    FILE                     file with MSA column weights (positive integers only!)  \n"
             "\n"
             "General options:\n"
             "  --seed         VALUE                       seed for pseudo-random number generator (default: current time)\n"
@@ -931,6 +991,7 @@ void CommandLineParser::print_help()
             "  --tip-inner    on | off                    tip-inner case optimization (default: OFF)\n"
             "  --site-repeats on | off                    use site repeats optimization, 10%-60% faster than tip-inner (default: ON)\n" <<
             "  --threads      VALUE                       number of parallel threads to use (default: " << sysutil_get_cpu_cores() << ")\n" <<
+            "  --workers      VALUE                       number of tree searches to run in parallel (default: 1)\n" <<
             "  --simd         none | sse3 | avx | avx2    vector instruction set to use (default: auto-detect).\n"
             "  --rate-scalers on | off                    use individual CLV scalers for each rate category (default: ON for >2000 taxa)\n"
             "  --force        [ <CHECKS> ]                disable safety checks (please think twice!)\n"

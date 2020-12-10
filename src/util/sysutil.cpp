@@ -114,7 +114,7 @@ unsigned long sysutil_get_memused()
 #endif
 }
 
-unsigned long sysutil_get_memtotal()
+unsigned long sysutil_get_memtotal(bool ignore_errors)
 {
 #if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
 
@@ -122,7 +122,12 @@ unsigned long sysutil_get_memtotal()
   long pagesize = sysconf(_SC_PAGESIZE);
 
   if ((phys_pages == -1) || (pagesize == -1))
-    sysutil_fatal("Cannot determine amount of RAM");
+  {
+    if (ignore_errors)
+      return 0;
+    else
+      throw runtime_error("Cannot determine amount of RAM");
+  }
 
   // sysconf(3) notes that pagesize * phys_pages can overflow, such as
   // when long is 32-bits and there's more than 4GB RAM.  Since vsearch
@@ -140,14 +145,24 @@ unsigned long sysutil_get_memtotal()
   int64_t ram = 0;
   size_t length = sizeof(ram);
   if(-1 == sysctl(mib, 2, &ram, &length, NULL, 0))
-    sysutil_fatal("Cannot determine amount of RAM");
+  {
+    if (ignore_errors)
+      return 0;
+    else
+      throw runtime_error("Cannot determine amount of RAM");
+  }
   return ram;
 
 #else
 
   struct sysinfo si;
   if (sysinfo(&si))
-    sysutil_fatal("Cannot determine amount of RAM");
+  {
+    if (ignore_errors)
+      return 0;
+    else
+      throw runtime_error("Cannot determine amount of RAM");
+  }
   return si.totalram * si.mem_unit;
 
 #endif
@@ -160,11 +175,6 @@ static void get_cpuid(int32_t out[4], int32_t x)
 #else
   __cpuid_count(x, 0, out[0], out[1], out[2], out[3]);
 #endif
-}
-
-static std::string build_path(size_t cpu_number)
-{
-  return "/sys/devices/system/cpu/cpu" + to_string(cpu_number) + "/topology/";
 }
 
 size_t read_id_from_file(const std::string &filename)
@@ -205,7 +215,7 @@ int get_physical_core_count(size_t n_cpu)
   unordered_set<size_t> cores;
   for (size_t i = 0; i < n_cpu; ++i)
   {
-    string cpu_path = build_path(i);
+    string cpu_path = "/sys/devices/system/cpu/cpu" + to_string(i) + "/topology/";
     size_t core_id = get_core_id(cpu_path);
     size_t node_id = get_numa_node_id(cpu_path);
     size_t uniq_core_id = (node_id << 16) + core_id;
@@ -337,6 +347,74 @@ unsigned int sysutil_simd_autodetect()
     return PLL_ATTRIB_ARCH_CPU;
 }
 
+#if defined(__linux__)
+static string get_cpuinfo_linux(const string& key)
+{
+  string value = "(not found)";
+  ifstream fs("/proc/cpuinfo");
+  if (fs.good())
+  {
+    string line;
+    while (!fs.eof())
+    {
+      std::getline(fs, line, '\n');
+      if (strncmp(line.c_str(), key.c_str(), key.length()) == 0)
+      {
+        size_t offset = key.length();
+        while ((isspace(line[offset]) || line[offset] == ':') && offset < line.length())
+          offset++;
+        value = line.c_str() + offset;
+        break;
+      }
+    }
+  }
+
+  return value;
+}
+#endif
+
+string sysutil_get_cpu_model()
+{
+  string model = "unknown CPU";
+#if defined(__linux__)
+  model = get_cpuinfo_linux("model name");
+#elif defined(__APPLE__)
+  char str[256];
+  size_t len = 256;
+  if (sysctlbyname("machdep.cpu.brand_string", &str, &len, NULL, 0) == 0)
+    model = str;
+#endif
+  return model;
+}
+
+double sysutil_get_energy()
+{
+  double energy = 0;
+  size_t max_packages = 32;
+  try
+  {
+    for(size_t i = 0; i < max_packages; i++)
+    {
+      double pkg_energy;
+      auto fname = "/sys/class/powercap/intel-rapl/intel-rapl:" + to_string(i) + "/energy_uj";
+      if (!sysutil_file_exists(fname))
+        break;
+      ifstream fs(fname);
+      fs >> pkg_energy;
+      energy += pkg_energy;
+    }
+    energy /= 1e6; // convert to Joules
+    energy /= 3600; // convert to Wh
+    return energy;
+  }
+  catch(const std::runtime_error& e)
+  {
+    printf("Error getting energy: %s\n", e.what());
+    return 0;
+  }
+}
+
+
 std::string sysutil_realpath(const std::string& path)
 {
   char * real_path = realpath(path.c_str(), NULL);
@@ -368,7 +446,7 @@ std::string sysutil_realpath(const std::string& path)
 
 bool sysutil_file_exists(const std::string& fname, int access_mode)
 {
-  return access(fname.c_str(), access_mode) == 0;
+  return !sysutil_dir_exists(fname) && access(fname.c_str(), access_mode) == 0;
 }
 
 bool sysutil_dir_exists(const std::string& dname)
