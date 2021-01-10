@@ -96,8 +96,8 @@ public:
   void compute_ancestral(const AncestralStatesSharedPtr& ancestral,
                          const PartitionAssignment& part_assign);
 
-  pllmod_treeinfo_t * _pll_treeinfo;
 private:
+  pllmod_treeinfo_t * _pll_treeinfo;
   IDSet _parts_master;
   int _brlen_opt_method;
   double _brlen_min;
