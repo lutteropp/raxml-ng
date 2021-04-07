@@ -1055,13 +1055,13 @@ void prepare_tree(const RaxmlInstance& instance, Tree& tree)
   tree.reset_tip_ids(instance.tip_id_map);
 }
 
-Tree generate_tree(const RaxmlInstance& instance, StartingTree type)
+Tree generate_tree(const RaxmlInstance& instance, StartingTree type, int seed)
 {
   Tree tree;
 
   const auto& opts = instance.opts;
   const auto& parted_msa = *instance.parted_msa;
-  const auto  tree_rand_seed = rand();
+  const auto  tree_rand_seed = seed;
 
   switch (type)
   {
@@ -1449,7 +1449,7 @@ void build_start_trees(RaxmlInstance& instance, size_t skip_trees)
 
     for (size_t i = 0; i < st_tree_count; ++i)
     {
-      auto tree = generate_tree(instance, st_tree_type);
+      auto tree = generate_tree(instance, st_tree_type, rand());
 
       // TODO use universal starting tree generator
       if (st_tree_type == StartingTree::user)
@@ -1624,7 +1624,7 @@ void generate_bootstraps(RaxmlInstance& instance, const CheckpointFile& checkp)
     /* generate starting trees for bootstrap searches */
     for (size_t b = 0; b < instance.opts.num_bootstraps; ++b)
     {
-      auto tree = generate_tree(instance, StartingTree::random);
+      auto tree = generate_tree(instance, StartingTree::random, rand());
 
 //      if (b < checkp.bs_trees.size())
 //        continue;
@@ -2815,7 +2815,7 @@ void master_main(RaxmlInstance& instance, CheckpointManager& cm)
 
   /* init template tree */
   srand(instance.opts.random_seed);
-  instance.random_tree = generate_tree(instance, StartingTree::random);
+  instance.random_tree = generate_tree(instance, StartingTree::random, rand());
 
   init_parallel_buffers(instance);
 
@@ -3070,7 +3070,7 @@ int internal_main(int argc, char** argv, void* comm)
         if (!sysutil_file_exists(opts.tree_file))
           throw runtime_error("File not found: " + opts.tree_file);
         instance.start_tree_stream.reset(new NewickStream(opts.tree_file, std::ios::in));
-        Tree tree = generate_tree(instance, StartingTree::user);
+        Tree tree = generate_tree(instance, StartingTree::user, rand());
         check_terrace(instance, tree);
         break;
       }
@@ -3087,7 +3087,7 @@ int internal_main(int argc, char** argv, void* comm)
           if (!sysutil_file_exists(opts.tree_file))
             throw runtime_error("File not found: " + opts.tree_file);
           instance.start_tree_stream.reset(new NewickStream(opts.tree_file, std::ios::in));
-          Tree tree = generate_tree(instance, StartingTree::user);
+          Tree tree = generate_tree(instance, StartingTree::user, rand());
         }
         if (opts.command == Command::parse)
           print_resources(instance);

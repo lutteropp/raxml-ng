@@ -146,7 +146,7 @@ void load_msa_weights(MSA& msa, const Options& opts);
 void load_msa(RaxmlInstance& instance);
 void load_parted_msa(RaxmlInstance& instance);
 void prepare_tree(const RaxmlInstance& instance, Tree& tree);
-Tree generate_tree(const RaxmlInstance& instance, StartingTree type);
+Tree generate_tree(const RaxmlInstance& instance, StartingTree type, int seed);
 void load_start_trees(RaxmlInstance& instance);
 void load_checkpoint(RaxmlInstance& instance, CheckpointManager& cm);
 void load_constraint(RaxmlInstance& instance);
