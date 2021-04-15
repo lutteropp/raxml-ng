@@ -42,9 +42,6 @@
 
 using namespace std;
 
-namespace raxml
-{
-
 struct RaxmlWorker;
 
 enum class RaxmlRunPhase
@@ -190,6 +187,6 @@ void master_main(RaxmlInstance& instance, CheckpointManager& cm);
 int clean_exit(int retval);
 int internal_main(int argc, char** argv, void* comm);
 
-}
+
 
 #endif /* SRC_MAIN_HPP_ */

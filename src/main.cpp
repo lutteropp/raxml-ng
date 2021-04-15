@@ -55,8 +55,6 @@
 
 using namespace std;
 
-namespace raxml {
-
 void print_banner()
 {
   LOG_INFO << endl << "RAxML-NG v. " << RAXML_VERSION << " released on " << RAXML_DATE <<
@@ -3154,20 +3152,19 @@ int internal_main(int argc, char** argv, void* comm)
   return clean_exit(retval);
 }
 
-}
 
 #ifdef _RAXML_BUILD_AS_LIB
 
 extern "C" int dll_main(int argc, char** argv, void* comm)
 {
-  return raxml::internal_main(argc, argv, comm);
+  return internal_main(argc, argv, comm);
 }
 
 #else
 
 int main(int argc, char** argv)
 {
-  auto retval = raxml::internal_main(argc, argv, 0);
+  auto retval = internal_main(argc, argv, 0);
   return retval;
 }
 
